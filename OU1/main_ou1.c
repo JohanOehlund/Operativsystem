@@ -66,8 +66,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
     }
-
-
+    
     for (int j = 0; j < nrthr; ++j) {
         if(pthread_join(trd[j], NULL)){
             perror("pthread_join");
