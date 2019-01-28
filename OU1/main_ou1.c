@@ -61,7 +61,6 @@ int main() {
     pthread_t *trd=calloc((size_t)nrthr,sizeof(pthread_t));
 
     for (int i = 0; i < nrthr; ++i) {
-
         if(pthread_create(&trd[i], NULL, work, (void*)0)){
             perror("ERROR creating thread.");
             exit(EXIT_FAILURE);
