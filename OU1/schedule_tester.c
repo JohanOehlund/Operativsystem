@@ -7,6 +7,9 @@
 
 //typedef struct sched_param sched_param;
 
+// gcc -Wall -pthread -o schedule_tester schedule_tester.c
+// sudo ./schedule_tester -p 10000 -l 500000
+// sudo valgrind --leak-check=full ./schedule_tester -p 7 -l 10000
 
 
 int main(int argc, char** argv ) {
@@ -56,6 +59,7 @@ int main(int argc, char** argv ) {
     do {
 
         printf("\n1. Measure throughput\n");
+        printf("2. Measure latency\n");
         printf("6. End\n");
 
 
@@ -64,8 +68,10 @@ int main(int argc, char** argv ) {
 
         switch (choice) {
             case 1:
-                measure_throughput();
-
+                measure_throughput_or_latency(false);
+                break;
+            case 2:
+                measure_throughput_or_latency(true);
                 break;
             case 6:
                 printf("Closing program");
@@ -79,45 +85,75 @@ int main(int argc, char** argv ) {
 
 
     }while (choice != 6);
-
+    free(params1);
 }
 
-void measure_throughput() {
+
+void measure_throughput_or_latency(bool latency) {
     struct timespec start, end;
     struct sched_param sched;
+    int number_schedulers = 3;
+    int number_test = 3;
+    unsigned long time=0;
 
     pid_t pid = getpid();
-    sched.sched_priority = sched_get_priority_max(SCHED_OTHER);
-
-    if (sched_setscheduler(pid, SCHED_OTHER, &sched) < 0)
-        fprintf(stderr, "SETSCHEDULER failed - err = %s\n", strerror(errno));
-    else
-        printf("Priority set to \"%d\"\n", sched.sched_priority);
-
-    printf("test: %d\n", sched_getscheduler(pid));
     pthread_t *trd = calloc((size_t) NRTHR, sizeof(pthread_t));
 
-    clock_gettime(CLOCK_REALTIME, &start);
+    for(int i = 0; i < number_schedulers; i++) {
+        time = 0;
+        sched.sched_priority = sched_get_priority_max(schedulers[i]);
 
-    for (int i = 0; i < NRTHR; ++i) {
-        if (pthread_create(&trd[i], NULL, work, (void *) params1)) {
-            perror("ERROR creating thread.");
-            exit(EXIT_FAILURE);
+        if (sched_setscheduler(pid, schedulers[i], &sched) < 0) {
+            fprintf(stderr, "SETSCHEDULER failed - err = %s\n", strerror(errno));
+        } else {
+            //printf("Priority set to \"%d\"\n", sched.sched_priority);
+        }
+
+        for (int l = 0; l < number_test; ++l) {
+
+            clock_gettime(CLOCK_REALTIME, &start);
+            for (int j = 0; j < NRTHR; ++j) {
+                if (pthread_create(&trd[j], NULL, work, (void *) params1)) {
+                    perror("ERROR creating thread.");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            work((void *) params1);
+
+            for (int k = 0; k < NRTHR; ++k) {
+                if (pthread_join(trd[k], NULL)) {
+                    perror("pthread_join");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            clock_gettime(CLOCK_REALTIME, &end);
+
+            time += usec_since(&start, &end);
+        }
+        if (latency) {
+            unsigned long latency_time = (time / number_test);
+            if (sched_getscheduler(pid) == SCHED_OTHER) {
+                printf("SCHED_OTHER Latency: %.8lu seconds\n", latency_time);
+            } else if (sched_getscheduler(pid) == SCHED_FIFO) {
+                printf("SCHED_FIFO Latency: %li seconds\n", latency_time);
+            } else if (sched_getscheduler(pid) == SCHED_RR) {
+                printf("SCHED_RR Latency: %li seconds\n", latency_time);
+            }
+        }
+        else {
+            unsigned long throughput = ((NRTHR + 1) * 1000000UL) / (time / number_test);
+            if (sched_getscheduler(pid) == SCHED_OTHER) {
+                printf("SCHED_OTHER Throughput: %li threads/second\n", throughput);
+            } else if (sched_getscheduler(pid) == SCHED_FIFO) {
+                printf("SCHED_FIFO Throughput: %li threads/second\n", throughput);
+            } else if (sched_getscheduler(pid) == SCHED_RR) {
+                printf("SCHED_RR Throughput: %li threads/second\n", throughput);
+            }
+
         }
     }
-    work((void *) params1);
 
-    for (int j = 0; j < NRTHR; ++j) {
-        if (pthread_join(trd[j], NULL)) {
-            perror("pthread_join");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    clock_gettime(CLOCK_REALTIME, &end);
-
-    usec_since(&start, &end);
-
+    free(trd);
 
 }
 
@@ -142,7 +178,8 @@ static unsigned long usec_since(struct timespec *start, struct timespec *end) {
 
     unsigned long time = (e - s)/1000;
 
-    printf("Time elapsed: %lu microcseconds\n", time);
+    //printf("Time elapsed: %.9lu microcseconds\n", time);
+    printf("%d.%.9ld\n", (int) (end->tv_sec - start->tv_sec), end->tv_nsec - start->tv_nsec);
 
     return time;
 }
