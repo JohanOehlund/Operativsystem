@@ -20,6 +20,7 @@ int main(int argc, char** argv ) {
     params1->loops = 0;
     int choice;
 
+
     while ((c = getopt(argc, argv, "p:l:")) != -1) {
 
         switch (c) {
@@ -60,6 +61,7 @@ int main(int argc, char** argv ) {
 
         printf("\n1. Measure throughput\n");
         printf("2. Measure latency\n");
+        printf("3. Measure tail latency\n");
         printf("6. End\n");
 
 
@@ -72,6 +74,9 @@ int main(int argc, char** argv ) {
                 break;
             case 2:
                 measure_throughput_or_latency(true);
+                break;
+            case 3:
+                measure_tail_latency();
                 break;
             case 6:
                 printf("Closing program");
@@ -86,6 +91,67 @@ int main(int argc, char** argv ) {
 
     }while (choice != 6);
     free(params1);
+}
+
+void measure_tail_latency() {
+
+    struct sched_param sched;
+    int number_schedulers = 3;
+    int number_test = 3;
+
+    pid_t pid = getpid();
+    pthread_t *trd = calloc((size_t) NRTHR, sizeof(pthread_t));
+
+    for(int i = 0; i < number_schedulers; i++) {
+        sched.sched_priority = sched_get_priority_max(schedulers[i]);
+
+        if (sched_setscheduler(pid, schedulers[i], &sched) < 0) {
+            fprintf(stderr, "SETSCHEDULER failed - err = %s\n", strerror(errno));
+        } else {
+            //printf("Priority set to \"%d\"\n", sched.sched_priority);
+        }
+
+        for (int l = 0; l < number_test; ++l) {
+
+
+            for (int j = 0; j < 1; ++j) {
+                if (pthread_create(&trd[j], NULL, big_work, (void *) params1)) {
+                    perror("ERROR creating thread.");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            for (int j = 1; j < NRTHR; ++j) {
+                if (pthread_create(&trd[j], NULL, work, (void *) params1)) {
+                    perror("ERROR creating thread.");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            work((void *) params1);
+
+            for (int k = 0; k < NRTHR; ++k) {
+                if (pthread_join(trd[k], NULL)) {
+                    perror("pthread_join");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+
+        double tail_latency_time_work = (work_time / NRTHR) / number_test;
+        double tail_latency_time_big_work = (big_work_time / 1) / number_test;
+
+        double percentage = ((tail_latency_time_big_work / tail_latency_time_work) * 100);
+
+        if (sched_getscheduler(pid) == SCHED_OTHER) {
+            printf("SCHED_OTHER Tail latency: %lf %%\n", percentage);
+        } else if (sched_getscheduler(pid) == SCHED_FIFO) {
+            printf("SCHED_FIFO Tail latency: %lf %%\n", percentage);
+        } else if (sched_getscheduler(pid) == SCHED_RR) {
+            printf("SCHED_RR Tail latency: %lf %%\n", percentage);
+        }
+
+    }
+
+    free(trd);
 }
 
 
@@ -119,6 +185,7 @@ void measure_throughput_or_latency(bool latency) {
                 }
             }
             work((void *) params1);
+
 
             for (int k = 0; k < NRTHR; ++k) {
                 if (pthread_join(trd[k], NULL)) {
@@ -158,15 +225,34 @@ void measure_throughput_or_latency(bool latency) {
 }
 
 void *work(void* param){
-    //pid_t pid = getpid();
+    struct timespec start, end;
+
     params *params1 = (params*)param;
     int a = 0;
+    clock_gettime(CLOCK_REALTIME, &start);
 
     for (int i = 0; i < params1->loops; ++i) {
         a++;
     }
     //sleep(1);
 
+    clock_gettime(CLOCK_REALTIME, &end);
+    work_time += sec_since(&start, &end);
+    return NULL;
+}
+void *big_work(void* param){
+    struct timespec start, end;
+    params *params1 = (params*)param;
+    int a = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+
+    for (int i = 0; i < params1->loops*2; ++i) {
+        a++;
+    }
+    clock_gettime(CLOCK_REALTIME, &end);
+
+    big_work_time += sec_since(&start, &end);
     return NULL;
 }
 
