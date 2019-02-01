@@ -29,7 +29,7 @@ typedef struct {
 
 params *params1;
 void measure_throughput_or_latency(bool latency);
-static unsigned long usec_since(struct timespec *start, struct timespec *end);
+static double sec_since(struct timespec *start, struct timespec *end);
 void *work(void* param);
 
 #endif //OU1_SCHEDULE_TESTER_H

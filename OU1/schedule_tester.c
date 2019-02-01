@@ -94,7 +94,7 @@ void measure_throughput_or_latency(bool latency) {
     struct sched_param sched;
     int number_schedulers = 3;
     int number_test = 3;
-    unsigned long time=0;
+    double time=0;
 
     pid_t pid = getpid();
     pthread_t *trd = calloc((size_t) NRTHR, sizeof(pthread_t));
@@ -128,26 +128,26 @@ void measure_throughput_or_latency(bool latency) {
             }
             clock_gettime(CLOCK_REALTIME, &end);
 
-            time += usec_since(&start, &end);
+            time += sec_since(&start, &end);
         }
         if (latency) {
-            unsigned long latency_time = (time / number_test);
+            double latency_time = (time / number_test);
             if (sched_getscheduler(pid) == SCHED_OTHER) {
-                printf("SCHED_OTHER Latency: %.8lu seconds\n", latency_time);
+                printf("SCHED_OTHER Latency: %lf seconds\n", latency_time);
             } else if (sched_getscheduler(pid) == SCHED_FIFO) {
-                printf("SCHED_FIFO Latency: %li seconds\n", latency_time);
+                printf("SCHED_FIFO Latency: %lf seconds\n", latency_time);
             } else if (sched_getscheduler(pid) == SCHED_RR) {
-                printf("SCHED_RR Latency: %li seconds\n", latency_time);
+                printf("SCHED_RR Latency: %lf seconds\n", latency_time);
             }
         }
         else {
-            unsigned long throughput = ((NRTHR + 1) * 1000000UL) / (time / number_test);
+            double throughput = ((NRTHR + 1) / (time / number_test));
             if (sched_getscheduler(pid) == SCHED_OTHER) {
-                printf("SCHED_OTHER Throughput: %li threads/second\n", throughput);
+                printf("SCHED_OTHER Throughput: %lf threads/second\n", throughput);
             } else if (sched_getscheduler(pid) == SCHED_FIFO) {
-                printf("SCHED_FIFO Throughput: %li threads/second\n", throughput);
+                printf("SCHED_FIFO Throughput: %lf threads/second\n", throughput);
             } else if (sched_getscheduler(pid) == SCHED_RR) {
-                printf("SCHED_RR Throughput: %li threads/second\n", throughput);
+                printf("SCHED_RR Throughput: %lf threads/second\n", throughput);
             }
 
         }
@@ -170,16 +170,12 @@ void *work(void* param){
     return NULL;
 }
 
-static unsigned long usec_since(struct timespec *start, struct timespec *end) {
-    unsigned long long s, e;
+static double sec_since(struct timespec *start, struct timespec *end) {
+    double s, e;
 
-    s = start->tv_sec * 1000000000ULL + start->tv_nsec;
-    e =   end->tv_sec * 1000000000ULL +   end->tv_nsec;
+    s = start->tv_sec * 1000000000.0 + start->tv_nsec;
+    e =   end->tv_sec * 1000000000.0 +   end->tv_nsec;
 
-    unsigned long time = (e - s)/1000;
 
-    //printf("Time elapsed: %.9lu microcseconds\n", time);
-    printf("%d.%.9ld\n", (int) (end->tv_sec - start->tv_sec), end->tv_nsec - start->tv_nsec);
-
-    return time;
+    return (e - s)/1000000000.0;
 }
