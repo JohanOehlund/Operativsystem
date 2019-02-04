@@ -150,15 +150,15 @@ void measure_waiting_time() {
             }
             free(param1);
         }
-        double mean_wait_time = wait_time / NRTHR;
+        double mean_wait_time = wait_time / (NRTHR + 1);
 
 
         if (sched_getscheduler(pid) == SCHED_OTHER) {
-            printf("SCHED_OTHER Waiting time: The average waiting time of a thread %lf\n", mean_wait_time);
+            printf("SCHED_OTHER Waiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
         } else if (sched_getscheduler(pid) == SCHED_FIFO) {
-            printf("SCHED_FIFO TWaiting time: The average waiting time of a thread %lf\n", mean_wait_time);
+            printf("SCHED_FIFO TWaiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
         } else if (sched_getscheduler(pid) == SCHED_RR) {
-            printf("SCHED_RR Waiting time: The average waiting time of a thread %lf\n", mean_wait_time);
+            printf("SCHED_RR Waiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
         }
 
     }
@@ -173,6 +173,8 @@ void measure_tail_latency() {
     pthread_t *trd = calloc((size_t) NRTHR, sizeof(pthread_t));
 
     for(int i = 0; i < number_schedulers; i++) {
+        big_work_time = 0.0;
+        work_time = 0.0;
         sched.sched_priority = sched_get_priority_max(schedulers[i]);
 
         if (sched_setscheduler(pid, schedulers[i], &sched) < 0) {
@@ -195,6 +197,7 @@ void measure_tail_latency() {
                     exit(EXIT_FAILURE);
                 }
             }
+
             work((void *) params1);
 
             for (int k = 0; k < NRTHR; ++k) {
