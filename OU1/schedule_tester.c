@@ -110,6 +110,7 @@ void change_threads_and_loops() {
 
     printf("\nHow many threads do you want?\n");
     scanf("%d", &NRTHR);
+    NRTHR -= 1;
     printf("\nHow many loops do you want?\n");
     scanf("%d", &params1->loops);
 
@@ -197,7 +198,6 @@ void measure_tail_latency() {
                     exit(EXIT_FAILURE);
                 }
             }
-
             work((void *) params1);
 
             for (int k = 0; k < NRTHR; ++k) {
