@@ -57,7 +57,8 @@ int main(int argc, char** argv ) {
         exit(EXIT_FAILURE);
     }
 
-
+    pid_t pid = getpid();
+    struct timespec test_RR;
     printf("Choose testcase\n");
 
     do {
@@ -71,10 +72,12 @@ int main(int argc, char** argv ) {
         printf("4. Measure waiting time\n");
         printf("5. Change number of threads and/or loops\n");
         printf("6. End\n");
-
+        printf("7. See SCHED_RR (Round Robin) time split.\n");
+        printf("8. See SCHED_OTHER (Standard Round Robin with time sharing) time split.\n");
 
         printf("\nGive your choice (1 - 6): ");
         scanf("%d", &choice);
+
 
         switch (choice) {
             case 1:
@@ -94,6 +97,28 @@ int main(int argc, char** argv ) {
                 break;
             case 6:
                 printf("Closing program");
+                break;
+            case 7:
+                sched.sched_priority = sched_get_priority_max(SCHED_RR);
+                if (sched_setscheduler(pid, SCHED_RR, &sched) < 0) {
+                    fprintf(stderr, "SETSCHEDULER failed - err = %s\n", strerror(errno));
+                } else {
+                    //printf("Priority set to \"%d\"\n", sched.sched_priority);
+                }
+                sched_rr_get_interval(pid,&test_RR);
+                double rr = test_RR.tv_sec * 1000000000.0 + test_RR.tv_nsec;
+                printf("TIME FOR RR: %lf ms\n", rr/1000000);
+                break;
+            case 8:
+                sched.sched_priority = sched_get_priority_max(SCHED_OTHER);
+                if (sched_setscheduler(pid, SCHED_OTHER, &sched) < 0) {
+                    fprintf(stderr, "SETSCHEDULER failed - err = %s\n", strerror(errno));
+                } else {
+                    //printf("Priority set to \"%d\"\n", sched.sched_priority);
+                }
+                sched_rr_get_interval(pid,&test_RR);
+                double other = test_RR.tv_sec * 1000000000.0 + test_RR.tv_nsec;
+                printf("TIME FOR RR: %lf ms\n", other/1000000);
                 break;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
@@ -122,6 +147,7 @@ void measure_waiting_time() {
     pthread_t *trd = calloc((size_t) NRTHR, sizeof(pthread_t));
 
     for(int i = 0; i < number_schedulers; i++) {
+        wait_time = 0.0;
         sched.sched_priority = sched_get_priority_max(schedulers[i]);
 
         if (sched_setscheduler(pid, schedulers[i], &sched) < 0) {
@@ -157,9 +183,9 @@ void measure_waiting_time() {
         if (sched_getscheduler(pid) == SCHED_OTHER) {
             printf("SCHED_OTHER Waiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
         } else if (sched_getscheduler(pid) == SCHED_FIFO) {
-            printf("SCHED_FIFO TWaiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
+            printf("SCHED_FIFO Waiting time:  The average waiting time of a thread %lf seconds\n", mean_wait_time);
         } else if (sched_getscheduler(pid) == SCHED_RR) {
-            printf("SCHED_RR Waiting time: The average waiting time of a thread %lf seconds\n", mean_wait_time);
+            printf("SCHED_RR Waiting time:    The average waiting time of a thread %lf seconds\n", mean_wait_time);
         }
 
     }
@@ -293,15 +319,14 @@ void measure_throughput_or_latency(bool latency) {
 }
 
 void *work(void* param){
+
     params *params1 = (params*)param;
-    struct timespec start, end;
-
     clock_gettime(CLOCK_REALTIME, &params1->end_wait);
-
     pthread_mutex_lock(&mtx);
     wait_time += sec_since(&params1->start_wait, &params1->end_wait);
     pthread_mutex_unlock(&mtx);
 
+    struct timespec start, end;
     int a = 0;
     clock_gettime(CLOCK_REALTIME, &start);
 
