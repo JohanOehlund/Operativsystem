@@ -4,6 +4,8 @@
 #include "IOtester.h"
 
 // if=/dev/zero of=/home/c15aen/Operativsystem/Operativsystem/OU1/test bs=1G count=1
+// https://www.thomas-krenn.com/en/wiki/Linux_I/O_Performance_Tests_using_dd
+// https://www.techrepublic.com/article/how-to-change-the-linux-io-scheduler-to-fit-your-needs/
 
 int main(int argc, char** argv ) {
 
