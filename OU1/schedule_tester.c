@@ -118,7 +118,7 @@ int main(int argc, char** argv ) {
                 }
                 sched_rr_get_interval(pid,&test_RR);
                 double other = test_RR.tv_sec * 1000000000.0 + test_RR.tv_nsec;
-                printf("TIME FOR RR: %lf ms\n", other/1000000);
+                printf("TIME FOR OTHER: %lf ms\n", other/1000000);
                 break;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
@@ -136,7 +136,7 @@ void change_threads_and_loops() {
     printf("\nHow many threads do you want?\n");
     scanf("%d", &NRTHR);
     NRTHR -= 1;
-    printf("\nHow many loops do you want?\n");
+    printf("\nHow many loops do you want? (times 10000)\n");
     scanf("%d", &params1->loops);
 
 }
@@ -330,10 +330,12 @@ void *work(void* param){
     int a = 0;
     clock_gettime(CLOCK_REALTIME, &start);
 
-    for (int i = 0; i < params1->loops; ++i) {
-        a++;
-    }
+    for (int j = 0; j < 10000; ++j) {
 
+        for (int i = 0; i < params1->loops; ++i) {
+            a++;
+        }
+    }
     clock_gettime(CLOCK_REALTIME, &end);
     pthread_mutex_lock(&mtx);
     work_time += sec_since(&start, &end);
@@ -348,8 +350,11 @@ void *big_work(void* param){
 
     clock_gettime(CLOCK_REALTIME, &start_big);
 
-    for (int i = 0; i < params1->loops*2; ++i) {
-        a++;
+    for (int j = 0; j < 20000; ++j) {
+
+        for (int i = 0; i < params1->loops; ++i) {
+            a++;
+        }
     }
     clock_gettime(CLOCK_REALTIME, &end_big);
 

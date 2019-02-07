@@ -22,8 +22,12 @@ int main(int argc, char** argv ) {
 
     unsigned int a = 0;
     clock_gettime(CLOCK_REALTIME, &start);
-    for (unsigned int i = 0; i < 4000000000; ++i) {
-        a++;
+    for (int k = 0; k < 10000; ++k) {
+
+
+        for (int i = 0; i < 10000; ++i) {
+            a++;
+        }
     }
     clock_gettime(CLOCK_REALTIME, &end);
 

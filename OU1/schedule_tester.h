@@ -27,7 +27,7 @@ double wait_time = 0.0;
 struct sched_param sched;
 struct timespec start_latency, end_latency;
 int number_schedulers = 3;
-int number_test = 3;
+int number_test = 5;
 pthread_mutex_t mtx;
 pthread_cond_t cond;
 
