@@ -1,0 +1,17 @@
+noop:
+oflag=nocache,dsync: 7.7 MB/s
+oflag=nocache: 68.4 MB/s
+oflag=dsync: 7.0 MB/s
+NOFLAGS: 111 MB/s
+
+deadline:
+oflag=nocache,dsync: 6.8 MB/s
+oflag=nocache: 94.4 MB/s
+oflag=dsync: 6.8 MB/s
+NOFLAGS: 138.1 MB/s
+
+cfq:
+oflag=nocache,dsync: 6.7 MB/s
+oflag=nocache: 95.7MB/s
+oflag=dsync: 7.0 MB/s
+NOFLAGS: 67.4 MB/s
