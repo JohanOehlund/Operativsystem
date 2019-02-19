@@ -2,8 +2,9 @@
 #include <net/sock.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
+#include "PDU_kernel.h"
 
-
+//dmesg | tail
 
 #define NETLINK_USER 31
 
@@ -11,6 +12,14 @@ struct sock *nl_sk;
 
 static void hello_nl_recv_msg(struct sk_buff *skb) {
 
+    /*GEN_struct *gen = vmalloc(sizeof(GEN_struct));
+    gen->OPCode=INSERT;
+    INIT_struct *init = vmalloc(sizeof(INIT_struct));
+    init->OPCode=INSERT;
+    gen->created_struct=init;*/
+
+    GEN_struct *gen = NULL;
+    pdu_kernel_creater(gen);
     struct nlmsghdr *nlh;
     int pid;
     struct sk_buff *skb_out;
@@ -72,6 +81,7 @@ static void __exit hello_exit(void) {
     netlink_kernel_release(nl_sk);
 }
 
-module_init(hello_init); module_exit(hello_exit);
+module_init(hello_init);
+module_exit(hello_exit);
 
 MODULE_LICENSE("GPL");
