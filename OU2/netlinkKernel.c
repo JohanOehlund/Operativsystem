@@ -10,6 +10,7 @@
 
 struct sock *nl_sk;
 
+
 static void hello_nl_recv_msg(struct sk_buff *skb) {
 
     /*GEN_struct *gen = vmalloc(sizeof(GEN_struct));
