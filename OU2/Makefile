@@ -1,22 +1,25 @@
 KBUILD_CFLAGS += -w
 
-obj-m += netlinkKernel.o
 obj−m += PDU_kernel.o
+obj-m += netlinkKernel.o
+
 all:
-	make -w -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	make -w -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules -I $(PWD) 
 	
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm -rf *.o
-	rm -rf netlinkUser
-	rmmod netlinkKernel.ko
+
 
 compile:
 	gcc -std=c11 -o netlinkUser netlinkUser.c
 
+clear:
+	rm -rf *.o
+	rm -rf netlinkUser
+
 insmod:
 	insmod netlinkKernel.ko
-
+	
 rmmod:
 	rmmod netlinkKernel.ko
 

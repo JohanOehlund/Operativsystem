@@ -59,17 +59,4 @@ typedef struct DELETE_struct {
 }DELETE_struct;
 
 
-PDU_kernel_struct *pdu_kernel_creater(GEN_struct *p);
-
-void *create_init_PDU(void* answer);
-
-void *create_insert_PDU(void* answer);
-
-void *create_get_PDU(void* answer);
-
-void *create_delete_PDU(void* answer);
-
-void free_struct(GEN_struct *p);
-
-
 #endif //OU2_PDU_H
