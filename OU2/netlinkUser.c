@@ -1,21 +1,8 @@
-#include <sys/socket.h>
-#include <linux/netlink.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <zconf.h>
 
-#define NETLINK_USER 31
+#include "netlinkUser.h"
 
-#define MAX_PAYLOAD 1024 /* maximum payload size*/
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh = NULL;
-struct iovec iov;
-int sock_fd;
-struct msghdr msg;
 
-//insmod netlinkKernel.ko
-//rmmod netlinkKernel.ko
+
 int main() {
     sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
     if(sock_fd<0)
@@ -33,13 +20,60 @@ int main() {
     dest_addr.nl_pid = 0; /* For Linux Kernel */
     dest_addr.nl_groups = 0; /* unicast */
 
-    nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    /*nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
     memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
 
+
     strcpy(NLMSG_DATA(nlh), "Hello");
+    iov.iov_base = (void *)nlh;
+    iov.iov_len = nlh->nlmsg_len;
+    msg.msg_name = (void *)&dest_addr;
+    msg.msg_namelen = sizeof(dest_addr);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    */
+    init_rhashtable();
+
+
+/* Read message from kernel */
+    recvmsg(sock_fd, &msg, 0);
+    printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
+    close(sock_fd);
+}
+
+void init_rhashtable() {
+    /*GEN_struct *gen_struct = calloc(1, sizeof(GEN_struct));
+    gen_struct->OPCode = INIT;
+
+    INIT_struct* init = calloc(1, sizeof(INIT_struct));
+    init->OPCode = INIT;
+    init->test = 255;
+    gen_struct->created_struct=init;*/
+
+
+
+
+    void* test = calloc(1,4);
+    memset(test,INIT,1);
+    test++;
+    memset(test,255,1);
+    test--;
+    //memcpy(gen_struct->test,"hej", sizeof(char*));
+    printf("test: %p\n", test);
+
+
+    nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    printf("bytes: %u\n", NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh->nlmsg_pid = getpid();
+    nlh->nlmsg_flags = 0;
+
+
+    memcpy(NLMSG_DATA(nlh), test, strlen(test));
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
     msg.msg_name = (void *)&dest_addr;
@@ -51,8 +85,5 @@ int main() {
     sendmsg(sock_fd,&msg,0);
     printf("Waiting for message from kernel\n");
 
-/* Read message from kernel */
-    recvmsg(sock_fd, &msg, 0);
-    printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
-    close(sock_fd);
+
 }

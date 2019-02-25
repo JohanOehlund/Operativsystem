@@ -6,6 +6,7 @@
 #define OU2_PDU_H
 
 #include <linux/types.h>
+//#include <stdint.h>
 
 //Defines for client-server
 #define INIT 10
@@ -22,6 +23,7 @@ typedef struct PDU_kernel_struct {
 
 typedef struct GEN_struct {
     uint8_t OPCode;
+    char* test;
     void *created_struct;
 
 }GEN_struct;
@@ -29,7 +31,6 @@ typedef struct GEN_struct {
 
 typedef struct INIT_struct {
     uint8_t OPCode;
-    void *created_struct;
 
 }INIT_struct;
 
@@ -57,6 +58,21 @@ typedef struct DELETE_struct {
     char *servername;
 
 }DELETE_struct;
+
+static void *create_init_PDU(void* answer);
+
+static void *create_insert_PDU(void* answer);
+
+static void *create_get_PDU(void* answer);
+
+static void *create_delete_PDU(void* answer);
+
+static void free_struct(GEN_struct *p);
+
+static PDU_kernel_struct *pdu_kernel_creater(GEN_struct *p);
+
+
+
 
 
 #endif //OU2_PDU_H
