@@ -1,6 +1,7 @@
 #include "netlinkKernel.h"
 
 //https://lwn.net/Articles/751374/
+//https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
 
 static void recieve_data(struct sk_buff *skb) {
@@ -74,27 +75,95 @@ static void *read_exactly(void *data){
 
 
 static INIT_struct* read_INIT_struct(void* data){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    uint8_t OPCode;
-    memcpy(&OPCode,data,1);
-    printk(KERN_INFO "OPCODE: %u\n", OPCode);
+  printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+  uint8_t OPCode;
+  memcpy(&OPCode,data,1);
+  printk(KERN_INFO "OPCODE: %u\n", OPCode);
 
-    INIT_struct* init_struct = kmalloc(sizeof(INIT_struct),GFP_KERNEL);
-    if(init_struct == (void *) 0){
+  /*INIT_struct* init_struct = kmalloc(sizeof(INIT_struct),GFP_KERNEL);
+  if(init_struct == (void *) 0){
 
-        printk(KERN_ALERT "Memory allocation failed.\n");
+      printk(KERN_ALERT "Memory allocation failed.\n");
 
-        return 0;
+      return 0;
 
-    }
+  }
 
 
-    memcpy(&init_struct->OPCode,data,1);
+  memcpy(&init_struct->OPCode,data,1);
 
-    printk(KERN_INFO "Opcode in read_INIT_struct: %u\n", init_struct->OPCode);
+  printk(KERN_INFO "Opcode in read_INIT_struct: %u\n", init_struct->OPCode);
 
-    kfree(init_struct);
-    return init_struct;
+  kfree(init_struct);*/
+
+  int err = 0;
+  memset(&array, 0, sizeof(array));
+  printk(KERN_INFO "array[50]: %d\n", array[50]);
+  err = rhashtable_init(&ht, &test_rht_params);
+  if (err < 0) {
+      printk(KERN_ALERT "Test failed: Unable to initialize hashtable: %d\n",
+    		err);
+
+  	return NULL;
+  }
+
+  /*unsigned int i, insert_retries = 0;
+  s64 start, end;
+
+  struct test_obj *obj = &array[0];
+  obj->value = 1337;
+  printk(KERN_INFO "obj->node: %p\n", obj->node);*/
+
+  struct test_obj *obj;
+  bool expected = !(0 % 2);
+  u32 key = 0;
+  obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+  if (!obj) {
+  	err = -ENOMEM;
+  }
+
+  obj->ptr = TEST_PTR;
+  obj->value = 0 * 2;
+  printk(KERN_INFO "obj->ptr value: %s\n", (char*)obj->ptr);
+  err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
+
+
+  obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
+  if (obj->ptr != TEST_PTR || obj->value != 0) {
+    printk(KERN_INFO "obj->ptr or obj->value did not match.\n");
+
+  }else{
+    printk(KERN_INFO "IT MATCHES!!!\n");
+  }
+  printk(KERN_INFO "obj value: %p\n", obj);
+  printk(KERN_INFO "obj string: %s\n", (char*) obj->ptr);
+  kfree(obj);
+  return NULL;
+}
+
+
+static int insert_retry(struct rhashtable *ht, struct rhash_head *obj,
+                        const struct rhashtable_params params){
+  printk("Entering: %s\n",__FUNCTION__);
+	int err, retries = -1;
+  int enomem_retries = 0;
+  err = rhashtable_insert_fast(ht, obj, params);
+  if (err == -ENOMEM){
+    printk(KERN_INFO "err: %d\n", err);
+  }
+  printk(KERN_INFO "err value: %d\n", err);
+
+	/*do {
+		retries++;
+		cond_resched();
+		err = rhashtable_insert_fast(ht, obj, params);
+		if (err == -ENOMEM && enomem_retry == 1) {
+			enomem_retries++;
+			err = -EBUSY;
+		}
+	} while (err == -EBUSY);*/
+
+	return 0;
 }
 
 
@@ -124,4 +193,3 @@ static void __exit exit(void) {
     printk(KERN_INFO "exiting hello module\n");
     netlink_kernel_release(nl_sk);
 }
-
