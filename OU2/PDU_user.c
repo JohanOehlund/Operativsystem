@@ -2,15 +2,29 @@
 // Created by hasse on 2/19/19.
 //
 
-#include "PDU_kernel.h"
+#include "PDU_user.h"
 
 
-static data create_init_PDU(data answer){
+static void *create_init_PDU(void* answer){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
     return NULL;
 }
 
+static void *create_insert_PDU(void* answer){
+
+    return NULL;
+}
+
+static void *create_get_PDU(void* answer){
+
+    return NULL;
+}
+
+static void *create_delete_PDU(void* answer){
+
+    return NULL;
+}
 
 
 /* Free a struct.

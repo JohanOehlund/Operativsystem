@@ -5,8 +5,7 @@
 #ifndef OU2_PDU_H
 #define OU2_PDU_H
 
-#include <linux/types.h>
-
+#include <stdint.h>
 typedef void* data;
 //Defines for client-server
 #define INIT 11

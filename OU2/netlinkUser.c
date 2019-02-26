@@ -20,27 +20,39 @@ int main() {
     dest_addr.nl_pid = 0; /* For Linux Kernel */
     dest_addr.nl_groups = 0; /* unicast */
 
-    /*nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
     memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
 
-
-    strcpy(NLMSG_DATA(nlh), "Hello");
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
     msg.msg_name = (void *)&dest_addr;
     msg.msg_namelen = sizeof(dest_addr);
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
-    */
+    printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
     init_rhashtable();
 
 
 /* Read message from kernel */
+
     recvmsg(sock_fd, &msg, 0);
-    printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
+    data test = NLMSG_DATA(nlh);
+
+    uint8_t error;
+    uint16_t numbytes;
+
+    memcpy(&error,test, 1);
+    test+=1;
+    memcpy(&numbytes,test, 2);
+    test+=2;
+    data data = malloc(numbytes);
+    memcpy(data, test, numbytes);
+    printf("Received message error: %u\n", error);
+    printf("Received message numbytes: %u\n", numbytes);
+    printf("Received message data: %s\n", (char*)data);
     close(sock_fd);
 }
 
@@ -55,14 +67,10 @@ void init_rhashtable() {
 
 
 
-
-    void* test = calloc(1,4);
+    void* test = calloc(1,1);
     memset(test,INIT,1);
-    test++;
-    memset(test,255,1);
-    test--;
     //memcpy(gen_struct->test,"hej", sizeof(char*));
-    printf("test: %p\n", test);
+    //printf("test: %p\n", test);;
 
 
     nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
@@ -84,6 +92,7 @@ void init_rhashtable() {
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
     printf("Waiting for message from kernel\n");
-
+    free(test);
+    free(nlh);
 
 }

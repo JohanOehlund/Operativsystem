@@ -16,17 +16,22 @@
 
 #define MAX_ENTRIES	1000000
 #define TEST_HT_SIZE	8
-#define TEST_PTR	("Jag heter Hasse och jag gillar att fiska...")
+#define TEST_PTR	("Jag heter Hasse och jag gillar att fiska fggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg...")
 
 #define NETLINK_USER 31
 
 struct sock *nl_sk;
 
+
+
+
+
+
 static void recieve_data(struct sk_buff *skb);
 
-static void *read_exactly(void *data);
+static PDU_kernel_struct *read_exactly(data data);
 
-static INIT_struct* read_INIT_struct(void* data);
+static void read_INIT_struct(PDU_kernel_struct *response, data data);
 
 static int insert_retry(struct rhashtable *ht, struct rhash_head *obj,
                         const struct rhashtable_params params);
@@ -38,15 +43,15 @@ static void __exit exit(void);
 static struct rhashtable ht;
 
 struct test_obj {
-	void			*ptr;
-	int			value;
+	void *data;
+	int key;
 	struct rhash_head	node;
 };
 
 static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = TEST_HT_SIZE,
 	.head_offset = offsetof(struct test_obj, node),
-	.key_offset = offsetof(struct test_obj, value),
+	.key_offset = offsetof(struct test_obj, key),
 	.key_len = sizeof(int),
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),

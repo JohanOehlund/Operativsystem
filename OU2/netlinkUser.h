@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <zconf.h>
-#include "PDU_kernel.h"
+#include "PDU_user.h"
 
 #define NETLINK_USER 31
 

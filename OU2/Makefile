@@ -27,5 +27,8 @@ insmod:
 rmmod:
 	rmmod netlinkKernel.ko
 
+valgrind:
+	valgrind --leak-check=full --show-leak-kinds=all ./netlinkUser
+
 
 
