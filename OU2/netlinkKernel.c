@@ -114,30 +114,38 @@ static INIT_struct* read_INIT_struct(void* data){
   obj->value = 1337;
   printk(KERN_INFO "obj->node: %p\n", obj->node);*/
 
-  struct test_obj *obj;
-  bool expected = !(0 % 2);
-  u32 key = 0;
-  obj = kzalloc(sizeof(*obj), GFP_KERNEL);
-  if (!obj) {
-  	err = -ENOMEM;
+  int num_items = 5;
+  int i = 0;
+  while(i <= num_items){
+    struct test_obj *obj = kmalloc(sizeof(struct test_obj),GFP_KERNEL);
+      if (!obj) {
+      err = -ENOMEM;
+    }
+
+    obj->ptr = TEST_PTR;
+    obj->value = i * 2;
+    printk(KERN_INFO "obj->ptr value: %d\n", obj->value);
+
+    err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
+    i++;
   }
+  int j = 0;
+  while(j < num_items){
+    struct test_obj *obj_get = kmalloc(sizeof(struct test_obj),GFP_KERNEL);;
+    u32 key_get = j * 2;
+    printk(KERN_INFO "key_get: %d\n", key_get);
+    obj_get = rhashtable_lookup_fast(&ht, &key_get, test_rht_params);
+    if (obj_get->ptr != TEST_PTR || obj_get->value != (j * 2)) {
+      printk(KERN_INFO "obj->ptr or obj->value did not match.\n");
 
-  obj->ptr = TEST_PTR;
-  obj->value = 0 * 2;
-  printk(KERN_INFO "obj->ptr value: %s\n", (char*)obj->ptr);
-  err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
-
-
-  obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
-  if (obj->ptr != TEST_PTR || obj->value != 0) {
-    printk(KERN_INFO "obj->ptr or obj->value did not match.\n");
-
-  }else{
-    printk(KERN_INFO "IT MATCHES!!!\n");
+    }else{
+      printk(KERN_INFO "IT MATCHES!!!\n");
+    }
+    //printk(KERN_INFO "obj value: %p\n", obj_get);
+    printk(KERN_INFO "obj string: %s\n", (char*) obj_get->ptr);
+    j++;
   }
-  printk(KERN_INFO "obj value: %p\n", obj);
-  printk(KERN_INFO "obj string: %s\n", (char*) obj->ptr);
-  kfree(obj);
+  //kfree(obj);
   return NULL;
 }
 

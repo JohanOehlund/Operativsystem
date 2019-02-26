@@ -12,12 +12,11 @@
 #include <linux/jhash.h>
 #include <linux/rhashtable.h>
 #include "PDU_kernel.h"
-
 //dmesg | tail
 
 #define MAX_ENTRIES	1000000
 #define TEST_HT_SIZE	8
-#define TEST_PTR	("Jag heter Hasse.")
+#define TEST_PTR	("Jag heter Hasse och jag gillar att fiska...")
 
 #define NETLINK_USER 31
 
