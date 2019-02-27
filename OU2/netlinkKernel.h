@@ -22,7 +22,10 @@
 struct sock *nl_sk;
 
 
-
+struct nlmsghdr *nlh_kernel;
+int pid;
+struct sk_buff *skb_out;
+int msg_size;
 
 
 
@@ -46,9 +49,9 @@ static void __exit exit(void);
 static struct rhashtable ht;
 
 struct test_obj {
-	void *data;
-	int key;
-	struct rhash_head	node;
+	uint16_t key;
+    void *data;
+	struct rhash_head node;
 };
 
 static const struct rhashtable_params test_rht_params = {
@@ -59,9 +62,6 @@ static const struct rhashtable_params test_rht_params = {
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
 };
-
-static struct test_obj array[MAX_ENTRIES];
-
 
 
 module_init(init);

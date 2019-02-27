@@ -32,7 +32,6 @@ data PDU_to_buffer_user(uint8_t OP_code, data pdu){
         break;
         case INSERT:
             response_buffer = create_INSERT_buffer(pdu);
-
         break;
         default:
         fprintf(stderr, "Error creating buffer from PDU.\n");
@@ -63,7 +62,6 @@ static data create_INSERT_buffer(data pdu){
     memcpy(response_buffer, &insert_struct->data_bytes, 2);
     response_buffer+=2;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
-
 
     return head;
 }

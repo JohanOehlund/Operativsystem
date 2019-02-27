@@ -4,28 +4,23 @@
 
 
 static void recieve_data(struct sk_buff *skb) {
-
-    struct nlmsghdr *nlh_kernel;
-    int pid;
-    struct sk_buff *skb_out;
-    int msg_size;
     //char *msg="Hello from kernel";
     int res;
-
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
 
 
     nlh_kernel=(struct nlmsghdr*)skb->data;
-    void* test = nlmsg_data(nlh_kernel);
-
-    PDU_kernel_struct *response = read_exactly_from_user(test);
+    PDU_kernel_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel));
+    if(response == NULL){
+        printk(KERN_ERR "Error while reading from user space\n");
+        return NULL;
+    }
     data response_buffer = PDU_to_buffer_kernel(response);
     //INIT_struct *test2 = (INIT_struct*)test->created_struct;
     //printk(KERN_INFO "Netlink received <hhhhhhhh> Opcode: %s\n",test);
     //printk(KERN_INFO "Netlink received GEN_struct test: %s\n",test->test);
     pid = nlh_kernel->nlmsg_pid; //pid of sending process
-    msg_size=response->data_bytes+3;
+    msg_size=(response->data_bytes)+KERNEL_HEADERSIZE;
     skb_out = nlmsg_new(msg_size,0);
 
     if(!skb_out){
@@ -34,13 +29,13 @@ static void recieve_data(struct sk_buff *skb) {
     }
 
     nlh_kernel=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
-    NETLINK_CB(skb_out).dst_group = 0;
-    memcpy(nlmsg_data(nlh_kernel),response_buffer,msg_size);
 
+    NETLINK_CB(skb_out).dst_group = 0;
+    memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
     res=nlmsg_unicast(nl_sk,skb_out,pid);
 
     if(res<0)
-    printk(KERN_INFO "Error while sending bak to user\n");
+        printk(KERN_ERR "Error while sending bak to user\n");
 }
 
 
@@ -48,28 +43,27 @@ static void recieve_data(struct sk_buff *skb) {
 * @param    data - The data.
 * @return   pdu - The pdu.
 */
-static PDU_kernel_struct *read_exactly_from_user(void *data){
+static PDU_kernel_struct *read_exactly_from_user(data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     PDU_kernel_struct *response  = kmalloc(sizeof(PDU_kernel_struct), GFP_KERNEL);
     if (!response){
         printk(KERN_ALERT "Memory allocation failed.\n");
         return NULL;
     }
-    uint8_t OPCode;
-    memcpy(&OPCode,data,1);
-
-    switch (OPCode){
+    uint8_t OP_code;
+    memcpy(&OP_code,request,1);
+    printk(KERN_ALERT "OP_code %u\n", OP_code);
+    switch (OP_code){
         case INIT:
-            read_INIT_struct(response, data);
-        break;
-
+            read_INIT_struct(response, request);
+            break;
         case INSERT:
-            read_INSERT_struct(response, data);
-        break;
+            read_INSERT_struct(response, request);
+            break;
 
         default:
-        printk(KERN_ALERT "Error creating PDU.\n");
-        return NULL;
+            printk(KERN_ALERT "Error creating PDU.\n");
+            return NULL;
     }
     return response;
 }
@@ -77,9 +71,9 @@ static PDU_kernel_struct *read_exactly_from_user(void *data){
 
 static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    printk(KERN_INFO "error: %u\n", pdu->error);
-    printk(KERN_INFO "data: %s\n", (char*)pdu->data);
-    data response_buffer = kmalloc((pdu->data_bytes+3), GFP_KERNEL);
+    printk(KERN_INFO "error kernel: %u\n", pdu->error);
+    printk(KERN_INFO "data kernel: %s\n", (char*)pdu->data);
+    data response_buffer = kmalloc(((pdu->data_bytes)+KERNEL_HEADERSIZE), GFP_KERNEL);
     data head = response_buffer;
     memcpy(response_buffer, &pdu->error, 1);
     response_buffer++;
@@ -91,39 +85,54 @@ static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
 
 
 
-static void read_INSERT_struct(PDU_kernel_struct *response, data data){
+static void read_INSERT_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct test_obj *obj = kmalloc(sizeof(struct test_obj),GFP_KERNEL);
     if (!obj) {
-        err = -ENOMEM;
         printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
+        response->error = 1;
+        response->data = "Error when kmalloc.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
         return NULL;
     }
-    err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
+    /*
+    uint8_t OP_code;
+    uint16_t key;
+    uint16_t data_bytes;
+    data data;
+    */
+    uint16_t data_bytes;
+    request++;
+    memcpy(&obj->key, request, 2);
+    printk(KERN_INFO "obj->key: %u\n", obj->key);
+    request+=2;
+    memcpy(&data_bytes, request, 2);
+    printk(KERN_INFO "data_bytes: %d\n", data_bytes);
+    request+=2;
+    obj->data = kmalloc(data_bytes,GFP_KERNEL);
+    memcpy(obj->data, request, (data_bytes));
+    printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
 
+    /*int err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
+    if(err < 0){
+        printk(KERN_ALERT "Error when insert to rhashtable: %d\n", err);
+        response->error = err;
+        response->data = "Error when insert to rhashtable.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+    }else{
+        printk(KERN_INFO "Inserted object to rhashtable");
+        response->error = err;
+        response->data = "Inserted object to rhashtable";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+    }*/
+    //printk(KERN_INFO "Inserted object to rhashtable");
+    response->error = 1;
+    response->data = "TESTING!!!!!!";
+    response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
 }
 
 static void read_INIT_struct(PDU_kernel_struct *response, data data){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    /*uint8_t OPCode;
-    memcpy(&OPCode,data,1);
-    printk(KERN_INFO "OPCODE: %u\n", OPCode);*/
-
-    /*INIT_struct* init_struct = kmalloc(sizeof(INIT_struct),GFP_KERNEL);
-    if(init_struct == (void *) 0){
-
-    printk(KERN_ALERT "Memory allocation failed.\n");
-
-    return 0;
-
-
-
-
-    memcpy(&init_struct->OPCode,data,1);
-
-    printk(KERN_INFO "Opcode in read_INIT_struct: %u\n", init_struct->OPCode);
-
-    kfree(init_struct);*/
 
     int err = rhashtable_init(&ht, &test_rht_params);
     if (err < 0) {
@@ -138,46 +147,6 @@ static void read_INIT_struct(PDU_kernel_struct *response, data data){
         response->data_bytes = strlen(response->data);
     }
 
-    /*
-    int num_items = 5;
-    int i;
-
-    for(i = 0; i <= num_items; i++){
-    struct test_obj *obj = kmalloc(sizeof(struct test_obj),GFP_KERNEL);
-    if (!obj) {
-    err = -ENOMEM;
-
-    INIT_struct *init_struct = kmalloc(sizeof(INIT_struct),GFP_KERNEL);
-    init_struct->data = "KALASKUL";
-    init_struct->OPCode = INIT;
-    obj->data = init_struct;
-    obj->key = i * 2;
-    printk(KERN_INFO "obj->key: %d\n", obj->key);
-
-    err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
-    //i++;
-
-
-    int j = 0;
-    while(j < num_items){
-    struct test_obj *obj_get;
-    u32 key_get = j * 2;
-    printk(KERN_INFO "key_get: %d\n", key_get);
-    obj_get = rhashtable_lookup_fast(&ht, &key_get, test_rht_params);
-    if (obj_get->data != TEST_PTR || obj_get->key != (j * 2)) {
-    printk(KERN_INFO "obj->ptr or obj->value did not match.\n");
-
-}else{
-printk(KERN_INFO "IT MATCHES!!!\n");
-}
-//printk(KERN_INFO "obj value: %p\n", obj_get);
-INIT_struct* test = (INIT_struct*) obj_get->data;
-printk(KERN_INFO "obj string: %d\n", test->OPCode);
-printk(KERN_INFO "obj string: %s\n", (char*) test->data);
-j++;
-kfree(obj_get);
-}
-//kfree(obj);*/
 }
 
 

@@ -9,7 +9,7 @@
 
 #define NETLINK_USER 31
 
-#define TEST_DATA	("Jag heter Hasse och jag gillar att fiska fggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg...")
+#define TEST_DATA	("Jag")
 
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/

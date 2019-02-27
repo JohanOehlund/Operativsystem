@@ -14,6 +14,14 @@ typedef void* data;
 #define GET 13
 #define DELETE 14
 
+#define MAX_PAYLOAD 1024 /* maximum payload size*/
+
+
+#define KERNEL_HEADERSIZE 3
+#define INIT_HEADERSIZE 1
+#define INSERT_HEADERSIZE 5
+#define GET_HEADERSIZE 3
+#define DELETE_HEADERSIZE 3
 
 
 typedef struct GEN_struct {

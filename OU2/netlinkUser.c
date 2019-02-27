@@ -33,8 +33,8 @@ int main() {
 
 
     init_rhashtable();
-
-    insert_rhashtable();
+    init_rhashtable();
+    //insert_rhashtable();
 
 
 
@@ -44,15 +44,14 @@ int main() {
 void insert_rhashtable(){
     INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
     insert_struct->OP_code=INSERT;
-    insert_struct->key=1337;
-    insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD);
-    insert_struct->data=calloc(1,(insert_struct->data_bytes)+1);
+    insert_struct->key=(uint16_t)1337;
+    insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD)+1;
+    insert_struct->data=calloc(1,(insert_struct->data_bytes));
 
     memcpy(insert_struct->data, TEST_DATA, insert_struct->data_bytes);
-    printf("data %s\n", (char*)insert_struct->data);
     data action = PDU_to_buffer_user(INSERT, insert_struct);
 
-    memcpy(NLMSG_DATA(nlh_user), action, 1);
+    memcpy(NLMSG_DATA(nlh_user), action, (insert_struct->data_bytes)+INSERT_HEADERSIZE);
 
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
@@ -71,7 +70,7 @@ void init_rhashtable() {
 
     data action = PDU_to_buffer_user(INIT, init_struct);
 
-    memcpy(NLMSG_DATA(nlh_user), action, 1);
+    memcpy(NLMSG_DATA(nlh_user), action, INIT_HEADERSIZE);
 
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
@@ -79,11 +78,11 @@ void init_rhashtable() {
     printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
 
-    free(init_struct);
+    /*free(init_struct);
     free(nlh_user);
     free(pdu->data);
-    free(pdu);
+    free(pdu);*/
 
 }
