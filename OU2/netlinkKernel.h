@@ -16,7 +16,6 @@
 
 #define MAX_ENTRIES	1000000
 #define TEST_HT_SIZE	8
-#define TEST_PTR	("Jag heter Hasse och jag gillar att fiska fggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg...")
 
 #define NETLINK_USER 31
 
@@ -29,7 +28,11 @@ struct sock *nl_sk;
 
 static void recieve_data(struct sk_buff *skb);
 
-static PDU_kernel_struct *read_exactly(data data);
+static PDU_kernel_struct *read_exactly_from_user(data data);
+
+static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu);
+
+static void read_INSERT_struct(PDU_kernel_struct *response, data data);
 
 static void read_INIT_struct(PDU_kernel_struct *response, data data);
 

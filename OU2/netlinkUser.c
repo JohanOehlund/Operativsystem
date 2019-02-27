@@ -1,7 +1,4 @@
-
 #include "netlinkUser.h"
-
-
 
 int main() {
     sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
@@ -20,79 +17,73 @@ int main() {
     dest_addr.nl_pid = 0; /* For Linux Kernel */
     dest_addr.nl_groups = 0; /* unicast */
 
-    nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh->nlmsg_pid = getpid();
-    nlh->nlmsg_flags = 0;
+    nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user->nlmsg_pid = getpid();
+    nlh_user->nlmsg_flags = 0;
 
-    iov.iov_base = (void *)nlh;
-    iov.iov_len = nlh->nlmsg_len;
+    iov.iov_base = (void *)nlh_user;
+    iov.iov_len = nlh_user->nlmsg_len;
     msg.msg_name = (void *)&dest_addr;
     msg.msg_namelen = sizeof(dest_addr);
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
     printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
+
+
     init_rhashtable();
 
+    insert_rhashtable();
 
-/* Read message from kernel */
 
-    recvmsg(sock_fd, &msg, 0);
-    data test = NLMSG_DATA(nlh);
 
-    uint8_t error;
-    uint16_t numbytes;
-
-    memcpy(&error,test, 1);
-    test+=1;
-    memcpy(&numbytes,test, 2);
-    test+=2;
-    data data = malloc(numbytes);
-    memcpy(data, test, numbytes);
-    printf("Received message error: %u\n", error);
-    printf("Received message numbytes: %u\n", numbytes);
-    printf("Received message data: %s\n", (char*)data);
     close(sock_fd);
 }
 
-void init_rhashtable() {
-    /*GEN_struct *gen_struct = calloc(1, sizeof(GEN_struct));
-    gen_struct->OPCode = INIT;
+void insert_rhashtable(){
+    INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
+    insert_struct->OP_code=INSERT;
+    insert_struct->key=1337;
+    insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD);
+    insert_struct->data=calloc(1,(insert_struct->data_bytes)+1);
 
-    INIT_struct* init = calloc(1, sizeof(INIT_struct));
-    init->OPCode = INIT;
-    init->test = 255;
-    gen_struct->created_struct=init;*/
+    memcpy(insert_struct->data, TEST_DATA, insert_struct->data_bytes);
+    printf("data %s\n", (char*)insert_struct->data);
+    data action = PDU_to_buffer_user(INSERT, insert_struct);
 
-
-
-    void* test = calloc(1,1);
-    memset(test,INIT,1);
-    //memcpy(gen_struct->test,"hej", sizeof(char*));
-    //printf("test: %p\n", test);;
-
-
-    nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    printf("bytes: %u\n", NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh->nlmsg_pid = getpid();
-    nlh->nlmsg_flags = 0;
-
-
-    memcpy(NLMSG_DATA(nlh), test, strlen(test));
-    iov.iov_base = (void *)nlh;
-    iov.iov_len = nlh->nlmsg_len;
-    msg.msg_name = (void *)&dest_addr;
-    msg.msg_namelen = sizeof(dest_addr);
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
+    memcpy(NLMSG_DATA(nlh_user), action, 1);
 
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
+
     printf("Waiting for message from kernel\n");
-    free(test);
-    free(nlh);
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+}
+
+void init_rhashtable() {
+
+
+    INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
+    init_struct->OP_code = INIT;
+
+    data action = PDU_to_buffer_user(INIT, init_struct);
+
+    memcpy(NLMSG_DATA(nlh_user), action, 1);
+
+    printf("Sending message to kernel\n");
+    sendmsg(sock_fd,&msg,0);
+
+    printf("Waiting for message from kernel\n");
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(init_struct);
+    free(nlh_user);
+    free(pdu->data);
+    free(pdu);
 
 }

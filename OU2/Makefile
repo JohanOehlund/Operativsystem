@@ -13,7 +13,7 @@ clean:
 
 
 compile:
-	gcc -std=c11 -o netlinkUser netlinkUser.c
+	gcc -std=c11 -o netlinkUser netlinkUser.c PDU_user.c
 	rmmod netlinkKernel.ko
 	insmod netlinkKernel.ko
 
