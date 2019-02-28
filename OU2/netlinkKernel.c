@@ -56,9 +56,11 @@ static PDU_kernel_struct *read_exactly_from_user(data request){
         case INSERT:
             read_INSERT_struct(response, request);
             break;
-
         case GET:
             read_GET_struct(response, request);
+            break;
+        case DELETE:
+            read_DELETE_struct(response, request);
             break;
 
         default:
@@ -83,16 +85,43 @@ static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
     return head;
 }
 
+static void read_DELETE_struct(PDU_kernel_struct *response, data request){
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+
+    uint16_t key;
+    request++;
+    memcpy(&key, request, 2);
+    printk(KERN_INFO "GET key: %u\n", key);
+    //struct test_obj *obj_get;
+    struct test_obj *obj;
+    obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
+    if(obj == NULL){
+        printk(KERN_ALERT "Error when getting object.\n");
+        response->error = 1;
+        response->data = "Error when getting object.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+        return;
+    }
+
+    int err = rhashtable_remove_fast(&ht, &obj->node, test_rht_params);
+    if(err < 0){
+        printk(KERN_ALERT "Error when deleting from rhashtable: %d\n", err);
+        response->error = err;
+        response->data = "Error when deleting from rhashtable.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+    }else{
+        printk(KERN_INFO "Successful deleting object from rhashtable.");
+        response->error = err;
+        response->data = "Successful deleting object from rhashtable.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+    }
+
+
+}
+
 static void read_GET_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
-    /*if (!obj_get) {
-        printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
-        response->error = 1;
-        response->data = "Error when kmalloc.";
-        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
-        return NULL;
-    }*/
     uint16_t key;
     request++;
     memcpy(&key, request, 2);
@@ -133,12 +162,7 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
         return NULL;
     }
-    /*
-    uint8_t OP_code;
-    uint16_t key;
-    uint16_t data_bytes;
-    data data;
-    */
+
     uint16_t data_bytes;
     request++;
     memcpy(&obj->key, request, 2);

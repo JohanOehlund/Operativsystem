@@ -56,3 +56,4 @@ dkms.conf
 *.xml
 cmake-build-debug/
 CMakeLists.txt
+*.tmp

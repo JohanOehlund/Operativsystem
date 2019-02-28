@@ -38,6 +38,8 @@ static PDU_kernel_struct *read_exactly_from_user(data data);
 
 static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu);
 
+static void read_DELETE_struct(PDU_kernel_struct *response, data request);
+
 static void read_INSERT_struct(PDU_kernel_struct *response, data data);
 
 static void read_INIT_struct(PDU_kernel_struct *response, data data);

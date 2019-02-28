@@ -50,7 +50,7 @@ data PDU_to_buffer_user(uint8_t OP_code, data pdu){
     return response_buffer;
 }
 
-static data create_GET_buffer(data pdu){
+static data create_DELETE_buffer(data pdu){
     DELETE_struct* delete_struct = (DELETE_struct*) pdu;
     data response_buffer = calloc(1, DELETE_HEADERSIZE);
 

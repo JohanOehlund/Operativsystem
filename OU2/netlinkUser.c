@@ -26,14 +26,15 @@ int main() {
 }
 
 void delete_rhashtable(uint16_t key){
+    printf("delete_rhashtable!\n");
     GET_struct *get_struct = calloc(1,sizeof(GET_struct));
 
-    get_struct->OP_code = GET;
+    get_struct->OP_code = DELETE;
     get_struct->key = key;
 
-    data action = PDU_to_buffer_user(GET, get_struct);
+    data action = PDU_to_buffer_user(DELETE, get_struct);
 
-    memcpy(NLMSG_DATA(nlh_user), action, GET_HEADERSIZE);
+    memcpy(NLMSG_DATA(nlh_user), action, DELETE_HEADERSIZE);
 
     printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);

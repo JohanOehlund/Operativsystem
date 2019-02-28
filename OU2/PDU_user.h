@@ -67,6 +67,8 @@ PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh);
 
 data PDU_to_buffer_user(uint8_t OP_code, data pdu);
 
+static data create_DELETE_buffer(data pdu);
+
 static data create_GET_buffer(data pdu);
 
 static data create_GET_buffer(data pdu);
