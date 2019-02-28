@@ -18,8 +18,8 @@ PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
     pdu->data = malloc(pdu->data_bytes);
     memcpy(pdu->data, response_buffer, pdu->data_bytes);
 
-    printf("Received message error: %u\n", pdu->error);
-    printf("Received message numbytes: %u\n", pdu->data_bytes);
+//    printf("Received message error: %u\n", pdu->error);
+//    printf("Received message numbytes: %u\n", pdu->data_bytes);
     printf("Received message data: %s\n", (char*)pdu->data);
     return pdu;
 }
@@ -30,14 +30,50 @@ data PDU_to_buffer_user(uint8_t OP_code, data pdu){
         case INIT:
             response_buffer = create_INIT_buffer(pdu);
         break;
+
         case INSERT:
             response_buffer = create_INSERT_buffer(pdu);
         break;
+
+        case GET:
+            response_buffer = create_GET_buffer(pdu);
+        break;
+
+        case DELETE:
+            response_buffer = create_DELETE_buffer(pdu);
+        break;
+
         default:
         fprintf(stderr, "Error creating buffer from PDU.\n");
         return NULL;
     }
     return response_buffer;
+}
+
+static data create_GET_buffer(data pdu){
+    DELETE_struct* delete_struct = (DELETE_struct*) pdu;
+    data response_buffer = calloc(1, DELETE_HEADERSIZE);
+
+    data head = response_buffer;
+
+    memset(response_buffer, DELETE, 1);
+    response_buffer++;
+    memcpy(response_buffer, &delete_struct->key, 2);
+
+    return head;
+}
+
+static data create_GET_buffer(data pdu){
+    GET_struct* get_struct = (GET_struct*) pdu;
+    data response_buffer = calloc(1, GET_HEADERSIZE);
+
+    data head = response_buffer;
+
+    memset(response_buffer, GET, 1);
+    response_buffer++;
+    memcpy(response_buffer, &get_struct->key, 2);
+
+    return head;
 }
 
 static data create_INIT_buffer(data pdu){

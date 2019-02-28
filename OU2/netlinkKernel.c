@@ -4,10 +4,6 @@
 
 
 static void recieve_data(struct sk_buff *skb) {
-    //char *msg="Hello from kernel";
-    int res;
-
-
 
     nlh_kernel=(struct nlmsghdr*)skb->data;
     PDU_kernel_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel));
@@ -32,7 +28,7 @@ static void recieve_data(struct sk_buff *skb) {
 
     NETLINK_CB(skb_out).dst_group = 0;
     memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
-    res=nlmsg_unicast(nl_sk,skb_out,pid);
+    int res=nlmsg_unicast(nl_sk,skb_out,pid);
 
     if(res<0)
         printk(KERN_ERR "Error while sending bak to user\n");
@@ -61,6 +57,10 @@ static PDU_kernel_struct *read_exactly_from_user(data request){
             read_INSERT_struct(response, request);
             break;
 
+        case GET:
+            read_GET_struct(response, request);
+            break;
+
         default:
             printk(KERN_ALERT "Error creating PDU.\n");
             return NULL;
@@ -83,7 +83,45 @@ static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
     return head;
 }
 
+static void read_GET_struct(PDU_kernel_struct *response, data request){
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
+    /*if (!obj_get) {
+        printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
+        response->error = 1;
+        response->data = "Error when kmalloc.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+        return NULL;
+    }*/
+    uint16_t key;
+    request++;
+    memcpy(&key, request, 2);
+    printk(KERN_INFO "GET key: %u\n", key);
+    //struct test_obj *obj_get;
+    struct test_obj *obj_get;
+    obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
+    if(obj_get == NULL){
+        printk(KERN_ALERT "Error when getting object.\n");
+        response->error = 1;
+        response->data = "Error when getting object.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+        return;
+    }
+
+    printk(KERN_INFO "obj_get->data: %s\n", (char*)obj_get->data);
+    if (obj_get->key == key) {
+        printk(KERN_INFO "Key matches.\n");
+        response->error = 0;
+        response->data = obj_get->data;
+        response->data_bytes = strnlen((char*)response->data, MAX_PAYLOAD)+1;
+    }else{
+        printk(KERN_INFO "Key does not match...\n");
+        response->error = 1;
+        response->data = "Error when getting object.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+    }
+
+}
 
 static void read_INSERT_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
@@ -92,7 +130,7 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
         printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
         response->error = 1;
         response->data = "Error when kmalloc.";
-        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
         return NULL;
     }
     /*
@@ -113,22 +151,20 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
     memcpy(obj->data, request, (data_bytes));
     printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
 
-    /*int err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
+    int err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
     if(err < 0){
         printk(KERN_ALERT "Error when insert to rhashtable: %d\n", err);
         response->error = err;
         response->data = "Error when insert to rhashtable.";
-        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Inserted object to rhashtable");
         response->error = err;
         response->data = "Inserted object to rhashtable";
-        response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
-    }*/
-    //printk(KERN_INFO "Inserted object to rhashtable");
-    response->error = 1;
-    response->data = "TESTING!!!!!!";
-    response->data_bytes = strnlen(response->data, MAX_PAYLOAD);
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+    }
+
+
 }
 
 static void read_INIT_struct(PDU_kernel_struct *response, data data){
@@ -139,41 +175,15 @@ static void read_INIT_struct(PDU_kernel_struct *response, data data){
         printk(KERN_ALERT "Unable to initialize hashtable: %d\n", err);
         response->error = 1;
         response->data = "Unable to initialize hashtable.";
-        response->data_bytes = strlen(response->data);
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Initialized hashtable: %d\n", err);
         response->error = 0;
         response->data = "Initialized hashtable.";
-        response->data_bytes = strlen(response->data);
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
 
 }
-
-
-static int insert_retry(struct rhashtable *ht, struct rhash_head *obj,
-    const struct rhashtable_params params){
-        printk("Entering: %s\n",__FUNCTION__);
-        int err, retries = -1;
-        int enomem_retries = 0;
-        err = rhashtable_insert_fast(ht, obj, params);
-        if (err == -ENOMEM){
-            printk(KERN_INFO "err: %d\n", err);
-        }
-        printk(KERN_INFO "err value: %d\n", err);
-
-        /*do {
-        retries++;
-        cond_resched();
-        err = rhashtable_insert_fast(ht, obj, params);
-        if (err == -ENOMEM && enomem_retry == 1) {
-        enomem_retries++;
-        err = -EBUSY;
-    }
-} while (err == -EBUSY);*/
-
-return 0;
-}
-
 
 
 static int __init init(void) {

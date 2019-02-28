@@ -9,7 +9,7 @@
 
 #define NETLINK_USER 31
 
-#define TEST_DATA	("Jag")
+#define TEST_DATA ("Jag heter HASSE!!!")
 
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
@@ -20,8 +20,13 @@ struct iovec iov;
 struct msghdr msg;
 
 size_t strnlen(const char *s, size_t maxlen);
-void init_rhashtable();
 
-void insert_rhashtable();
+void delete_rhashtable(uint16_t key);
+void get_rhashtable(uint16_t key);
+void init_rhashtable();
+void insert_rhashtable(uint16_t key);
+
+int setup_netlink();
+void reset_netlink();
 
 #endif //OU2_NETLINKUSER_H

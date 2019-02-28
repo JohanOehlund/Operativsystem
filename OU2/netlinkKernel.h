@@ -19,8 +19,11 @@
 
 #define NETLINK_USER 31
 
+#define TEST_DATA ("Jag heter HASSE!!!")
+
 struct sock *nl_sk;
 
+static struct rhashtable ht;
 
 struct nlmsghdr *nlh_kernel;
 int pid;
@@ -39,26 +42,25 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data data);
 
 static void read_INIT_struct(PDU_kernel_struct *response, data data);
 
-static int insert_retry(struct rhashtable *ht, struct rhash_head *obj,
-                        const struct rhashtable_params params);
+static void read_GET_struct(PDU_kernel_struct *response, data request);
 
 static int __init init(void);
 
 static void __exit exit(void);
 
-static struct rhashtable ht;
+
 
 struct test_obj {
 	uint16_t key;
-    void *data;
 	struct rhash_head node;
+    void *data;
 };
 
 static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = TEST_HT_SIZE,
 	.head_offset = offsetof(struct test_obj, node),
 	.key_offset = offsetof(struct test_obj, key),
-	.key_len = sizeof(int),
+	.key_len = sizeof(uint16_t),
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
 };
