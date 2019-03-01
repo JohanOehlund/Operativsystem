@@ -1,38 +1,51 @@
 #include "netlinkUser.h"
 
-int main() {
+int main(int argc, char **argv) {
+
+
     setup_netlink();
 
     init_rhashtable();
 
-    uint16_t i = 0;
-    for (i = 0; i < 5; i++) {
+
+    test_rhashtable((void*)argv);
+
+    free(nlh_user);
+    close(sock_fd);
+}
+/*
+[69833.065352] exiting hello module
+[69833.092423] Entering: init
+*/
+
+void *test_rhashtable(void *arg) {
+    uint16_t i = 10;
+    for (i = 10; i < 15; i++) {
         reset_netlink();
         insert_rhashtable(i);
     }
-    uint16_t j = 0;
-    for (j = 0; j < 5; j++) {
+    uint16_t j = 10;
+    for (j = 10; j < 15; j++) {
         reset_netlink();
         get_rhashtable(j);
     }
 
-    uint16_t k = 0;
-    for (k = 0; k < 5; k++) {
+    uint16_t k = 10;
+    for (k = 10; k < 15; k++) {
         reset_netlink();
         delete_rhashtable(k);
     }
 
-    close(sock_fd);
 }
 
 void delete_rhashtable(uint16_t key){
     printf("delete_rhashtable!\n");
-    GET_struct *get_struct = calloc(1,sizeof(GET_struct));
+    DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
 
-    get_struct->OP_code = DELETE;
-    get_struct->key = key;
+    delete_struct->OP_code = DELETE;
+    delete_struct->key = key;
 
-    data action = PDU_to_buffer_user(DELETE, get_struct);
+    data action = PDU_to_buffer_user(DELETE, delete_struct);
 
     memcpy(NLMSG_DATA(nlh_user), action, DELETE_HEADERSIZE);
 
@@ -43,6 +56,11 @@ void delete_rhashtable(uint16_t key){
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(delete_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
 }
 
 void get_rhashtable(uint16_t key){
@@ -62,6 +80,11 @@ void get_rhashtable(uint16_t key){
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(get_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
 }
 
 void insert_rhashtable(uint16_t key){
@@ -69,7 +92,7 @@ void insert_rhashtable(uint16_t key){
     insert_struct->OP_code=INSERT;
     insert_struct->key=key;
     insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD)+1;
-    insert_struct->data=calloc(1,(insert_struct->data_bytes));
+    insert_struct->data = calloc(1,(insert_struct->data_bytes));
 
     memcpy(insert_struct->data, TEST_DATA, insert_struct->data_bytes);
     data action = PDU_to_buffer_user(INSERT, insert_struct);
@@ -83,6 +106,12 @@ void insert_rhashtable(uint16_t key){
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(insert_struct->data);
+    free(insert_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
 }
 
 void init_rhashtable() {
@@ -103,10 +132,10 @@ void init_rhashtable() {
 
     PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
 
-    /*free(init_struct);
-    free(nlh_user);
+    free(init_struct);
+    free(action);
     free(pdu->data);
-    free(pdu);*/
+    free(pdu);
 
 }
 

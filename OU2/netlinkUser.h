@@ -21,6 +21,7 @@ struct msghdr msg;
 
 size_t strnlen(const char *s, size_t maxlen);
 
+void *test_rhashtable(void *arg);
 void delete_rhashtable(uint16_t key);
 void get_rhashtable(uint16_t key);
 void init_rhashtable();

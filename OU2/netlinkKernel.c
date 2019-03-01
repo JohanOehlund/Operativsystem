@@ -12,9 +12,7 @@ static void recieve_data(struct sk_buff *skb) {
         return NULL;
     }
     data response_buffer = PDU_to_buffer_kernel(response);
-    //INIT_struct *test2 = (INIT_struct*)test->created_struct;
-    //printk(KERN_INFO "Netlink received <hhhhhhhh> Opcode: %s\n",test);
-    //printk(KERN_INFO "Netlink received GEN_struct test: %s\n",test->test);
+
     pid = nlh_kernel->nlmsg_pid; //pid of sending process
     msg_size=(response->data_bytes)+KERNEL_HEADERSIZE;
     skb_out = nlmsg_new(msg_size,0);
@@ -115,7 +113,8 @@ static void read_DELETE_struct(PDU_kernel_struct *response, data request){
         response->data = "Successful deleting object from rhashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
-
+    kfree(obj->data);
+    kfree(obj);
 
 }
 
