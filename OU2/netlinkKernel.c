@@ -77,8 +77,8 @@ static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
     data head = response_buffer;
     memcpy(response_buffer, &pdu->error, 1);
     response_buffer++;
-    memcpy(response_buffer, &pdu->data_bytes, 2);
-    response_buffer+=2;
+    memcpy(response_buffer, &pdu->data_bytes, 4);
+    response_buffer+=4;
     memcpy(response_buffer, pdu->data, (pdu->data_bytes));
     return head;
 }
@@ -86,10 +86,10 @@ static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu){
 static void read_DELETE_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
-    uint16_t key;
+    char key[KEY_SIZE];
     request++;
-    memcpy(&key, request, 2);
-    printk(KERN_INFO "GET key: %u\n", key);
+    memcpy(key, request, KEY_SIZE);
+    printk(KERN_INFO "GET key: %s\n", key);
     //struct test_obj *obj_get;
     struct test_obj *obj;
     obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
@@ -121,13 +121,13 @@ static void read_DELETE_struct(PDU_kernel_struct *response, data request){
 static void read_GET_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
-    uint16_t key;
+    char key[KEY_SIZE];
     request++;
-    memcpy(&key, request, 2);
-    printk(KERN_INFO "GET key: %u\n", key);
+    memcpy(key, request, KEY_SIZE);
+    printk(KERN_INFO "GET key: %s\n", key);
     //struct test_obj *obj_get;
     struct test_obj *obj_get;
-    obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
+    obj_get = rhashtable_lookup_fast(&ht, key, test_rht_params);
     if(obj_get == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
         response->error = 1;
@@ -136,8 +136,7 @@ static void read_GET_struct(PDU_kernel_struct *response, data request){
         return;
     }
 
-    printk(KERN_INFO "obj_get->data: %s\n", (char*)obj_get->data);
-    if (obj_get->key == key) {
+    if (strncmp(&obj_get->key, &key, KEY_SIZE) == 0) {
         printk(KERN_INFO "Key matches.\n");
         response->error = 0;
         response->data = obj_get->data;
@@ -145,7 +144,7 @@ static void read_GET_struct(PDU_kernel_struct *response, data request){
     }else{
         printk(KERN_INFO "Key does not match...\n");
         response->error = 1;
-        response->data = "Error when getting object.";
+        response->data = "Key does not match...";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
 
@@ -162,14 +161,14 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
         return NULL;
     }
 
-    uint16_t data_bytes;
+    u32 data_bytes;
     request++;
-    memcpy(&obj->key, request, 2);
-    printk(KERN_INFO "obj->key: %u\n", obj->key);
-    request+=2;
-    memcpy(&data_bytes, request, 2);
+    memcpy(obj->key, request, KEY_SIZE);
+    printk(KERN_INFO "obj->key: %s\n", obj->key);
+    request+=KEY_SIZE;
+    memcpy(&data_bytes, request, 4);
     printk(KERN_INFO "data_bytes: %d\n", data_bytes);
-    request+=2;
+    request+=4;
     obj->data = kmalloc(data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (data_bytes));
     printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);

@@ -21,11 +21,11 @@ struct msghdr msg;
 
 size_t strnlen(const char *s, size_t maxlen);
 
-void *test_rhashtable(void *arg);
-void delete_rhashtable(uint16_t key);
-void get_rhashtable(uint16_t key);
+void *test_rhashtable(data arg);
+void delete_rhashtable(char* key);
+void get_rhashtable(char* key);
 void init_rhashtable();
-void insert_rhashtable(uint16_t key);
+void insert_rhashtable(char* key);
 
 int setup_netlink();
 void reset_netlink();

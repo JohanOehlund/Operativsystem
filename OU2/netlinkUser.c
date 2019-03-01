@@ -2,11 +2,9 @@
 
 int main(int argc, char **argv) {
 
-
     setup_netlink();
 
     init_rhashtable();
-
 
     test_rhashtable((void*)argv);
 
@@ -18,41 +16,49 @@ int main(int argc, char **argv) {
 [69833.092423] Entering: init
 */
 
-void *test_rhashtable(void *arg) {
-    uint16_t i = 10;
+void *test_rhashtable(data arg) {
+    int i;
     for (i = 10; i < 15; i++) {
+        char key[KEY_SIZE];
+        memcpy(key, "1337", KEY_SIZE);
+        printf("KEY: %s\n", key);
         reset_netlink();
-        insert_rhashtable(i);
-    }
-    uint16_t j = 10;
-    for (j = 10; j < 15; j++) {
-        reset_netlink();
-        get_rhashtable(j);
-    }
+        insert_rhashtable(key);
+    //}
+    //int j;
+    //for (j = 10; j < 15; j++) {
+        char key2[KEY_SIZE];
 
-    uint16_t k = 10;
-    for (k = 10; k < 15; k++) {
+        memcpy(key2, "1337", KEY_SIZE);
         reset_netlink();
-        delete_rhashtable(k);
+        get_rhashtable(key2);
+    //}
+
+    //int k;
+    //for (k = 10; k < 15; k++) {
+        char key3[KEY_SIZE];
+
+        memcpy(key3, "1337", KEY_SIZE);
+        reset_netlink();
+        delete_rhashtable(key3);
     }
 
 }
 
-void delete_rhashtable(uint16_t key){
-    printf("delete_rhashtable!\n");
+void delete_rhashtable(char* key){
     DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
 
     delete_struct->OP_code = DELETE;
-    delete_struct->key = key;
+    strncpy(delete_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(DELETE, delete_struct);
 
     memcpy(NLMSG_DATA(nlh_user), action, DELETE_HEADERSIZE);
 
-    printf("Sending message to kernel\n");
+    //printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
 
-    printf("Waiting for message from kernel\n");
+    //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
@@ -63,20 +69,20 @@ void delete_rhashtable(uint16_t key){
     free(pdu);
 }
 
-void get_rhashtable(uint16_t key){
+void get_rhashtable(char* key){
     GET_struct *get_struct = calloc(1,sizeof(GET_struct));
 
     get_struct->OP_code = GET;
-    get_struct->key = key;
+    strncpy(get_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(GET, get_struct);
 
     memcpy(NLMSG_DATA(nlh_user), action, GET_HEADERSIZE);
 
-    printf("Sending message to kernel\n");
+    //printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
 
-    printf("Waiting for message from kernel\n");
+    //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
@@ -87,10 +93,10 @@ void get_rhashtable(uint16_t key){
     free(pdu);
 }
 
-void insert_rhashtable(uint16_t key){
+void insert_rhashtable(char* key){
     INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
     insert_struct->OP_code=INSERT;
-    insert_struct->key=key;
+    memcpy(insert_struct->key, key, KEY_SIZE);
     insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD)+1;
     insert_struct->data = calloc(1,(insert_struct->data_bytes));
 
@@ -99,10 +105,10 @@ void insert_rhashtable(uint16_t key){
 
     memcpy(NLMSG_DATA(nlh_user), action, (insert_struct->data_bytes)+INSERT_HEADERSIZE);
 
-    printf("Sending message to kernel\n");
+    //printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
 
-    printf("Waiting for message from kernel\n");
+    //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
@@ -124,10 +130,10 @@ void init_rhashtable() {
 
     memcpy(NLMSG_DATA(nlh_user), action, INIT_HEADERSIZE);
 
-    printf("Sending message to kernel\n");
+    //printf("Sending message to kernel\n");
     sendmsg(sock_fd,&msg,0);
 
-    printf("Waiting for message from kernel\n");
+    //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
     PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);

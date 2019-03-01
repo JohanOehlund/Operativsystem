@@ -13,8 +13,8 @@ PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
 
     memcpy(&pdu->error,response_buffer, 1);
     response_buffer+=1;
-    memcpy(&pdu->data_bytes,response_buffer, 2);
-    response_buffer+=2;
+    memcpy(&pdu->data_bytes,response_buffer, 4);
+    response_buffer+=4;
     pdu->data = malloc(pdu->data_bytes);
     memcpy(pdu->data, response_buffer, pdu->data_bytes);
 
@@ -58,7 +58,7 @@ static data create_DELETE_buffer(data pdu){
 
     memset(response_buffer, DELETE, 1);
     response_buffer++;
-    memcpy(response_buffer, &delete_struct->key, 2);
+    memcpy(response_buffer, delete_struct->key, KEY_SIZE);
 
     return head;
 }
@@ -71,7 +71,7 @@ static data create_GET_buffer(data pdu){
 
     memset(response_buffer, GET, 1);
     response_buffer++;
-    memcpy(response_buffer, &get_struct->key, 2);
+    memcpy(response_buffer, get_struct->key, KEY_SIZE);
 
     return head;
 }
@@ -88,15 +88,16 @@ static data create_INIT_buffer(data pdu){
 
 static data create_INSERT_buffer(data pdu){
     INSERT_struct *insert_struct = (INSERT_struct*) pdu;
-    data response_buffer = calloc(1, (insert_struct->data_bytes)+INSERT_HEADERSIZE);
+    size_t response_buffer_size = (insert_struct->data_bytes)+INSERT_HEADERSIZE + KEY_SIZE;
+    data response_buffer = calloc(1, response_buffer_size);
 
     data head = response_buffer;
     memcpy(response_buffer, &insert_struct->OP_code, 1);
     response_buffer++;
-    memcpy(response_buffer, &insert_struct->key, 2);
-    response_buffer+=2;
-    memcpy(response_buffer, &insert_struct->data_bytes, 2);
-    response_buffer+=2;
+    memcpy(response_buffer, &insert_struct->key, KEY_SIZE);
+    response_buffer+=KEY_SIZE;
+    memcpy(response_buffer, &insert_struct->data_bytes, 4);
+    response_buffer+=4;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
 
     return head;

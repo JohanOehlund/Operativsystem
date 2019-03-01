@@ -15,8 +15,7 @@
 //dmesg | tail
 
 #define MAX_ENTRIES	1000000
-#define TEST_HT_SIZE	8
-
+#define HT_SIZE	8
 #define NETLINK_USER 31
 
 #define TEST_DATA ("Jag heter HASSE!!!")
@@ -53,16 +52,16 @@ static void __exit exit(void);
 
 
 struct test_obj {
-	uint16_t key;
+	char key[KEY_SIZE];
 	struct rhash_head node;
-    void *data;
+	void *data;
 };
 
 static const struct rhashtable_params test_rht_params = {
-	.nelem_hint = TEST_HT_SIZE,
+	.nelem_hint = HT_SIZE,
 	.head_offset = offsetof(struct test_obj, node),
 	.key_offset = offsetof(struct test_obj, key),
-	.key_len = sizeof(uint16_t),
+	.key_len = KEY_SIZE,
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
 };

@@ -16,7 +16,7 @@
 typedef void* data;
 
 
-
+#define KEY_SIZE 64
 
 
 //Defines for client-server
@@ -25,10 +25,10 @@ typedef void* data;
 #define GET 13
 #define DELETE 14
 
-#define INIT_HEADERSIZE 1
-#define INSERT_HEADERSIZE 5
-#define GET_HEADERSIZE 3
-#define DELETE_HEADERSIZE 3
+#define INIT_HEADERSIZE      1
+#define INSERT_HEADERSIZE   (5 + KEY_SIZE)
+#define GET_HEADERSIZE      (1 + KEY_SIZE)
+#define DELETE_HEADERSIZE   (1 + KEY_SIZE)
 
 //Kernel space struct.
 typedef struct PDU_kernel_struct {
@@ -44,22 +44,22 @@ typedef struct INIT_struct {
 
 typedef struct INSERT_struct {
     uint8_t OP_code;
-    uint16_t key;
-    uint16_t data_bytes;
+    char key[KEY_SIZE];
+    uint32_t data_bytes;
     data data;
 
 }INSERT_struct;
 
 typedef struct GET_struct {
     uint8_t OP_code;
-    uint16_t key;
+    char key[KEY_SIZE];
 
 }GET_struct;
 
 
 typedef struct DELETE_struct {
     uint8_t OP_code;
-    uint16_t key;
+    char key[KEY_SIZE];
 
 }DELETE_struct;
 
