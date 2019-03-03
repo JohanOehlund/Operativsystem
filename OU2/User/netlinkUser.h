@@ -5,7 +5,7 @@
 #ifndef OU2_NETLINKUSER_H
 #define OU2_NETLINKUSER_H
 
-#include "PDU_user.h"
+#include "../Resources/PDU_user.h"
 
 #define NETLINK_USER 31
 

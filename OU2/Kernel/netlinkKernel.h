@@ -11,7 +11,7 @@
 #include <linux/skbuff.h>
 #include <linux/jhash.h>
 #include <linux/rhashtable.h>
-#include "PDU_kernel.h"
+#include "../Resources/PDU_kernel.h"
 //dmesg | tail
 
 #define MAX_ENTRIES	1000000
