@@ -2,6 +2,7 @@
 //https://lwn.net/Articles/751374/
 //https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
+extern int errno = 0;
 
 static void recieve_data(struct sk_buff *skb) {
 
@@ -127,7 +128,7 @@ static void read_GET_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "GET key: %s\n", key);
     //struct test_obj *obj_get;
     struct test_obj *obj_get;
-    obj_get = rhashtable_lookup_fast(&ht, key, test_rht_params);
+    obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj_get == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
         response->error = 1;
@@ -136,7 +137,7 @@ static void read_GET_struct(PDU_kernel_struct *response, data request){
         return;
     }
 
-    if (strncmp(&obj_get->key, &key, KEY_SIZE) == 0) {
+    if (memcmp(&obj_get->key, &key, KEY_SIZE) == 0) {
         printk(KERN_INFO "Key matches.\n");
         response->error = 0;
         response->data = obj_get->data;
@@ -173,9 +174,14 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
     memcpy(obj->data, request, (data_bytes));
     printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
 
-    int err = rhashtable_insert_fast(&ht, &obj->node, test_rht_params);
-    if(err < 0){
-        printk(KERN_ALERT "Error when insert to rhashtable: %d\n", err);
+    int err = rhashtable_lookup_insert_fast(&ht, &obj->node, test_rht_params);
+    if(err == -EEXIST){
+        printk(KERN_ALERT "Error, duplicated key.\n");
+        response->error = err;
+        response->data = "Error, duplicated key.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+    }else if(err < 0){
+        printk(KERN_ALERT "Error when insert to rhashtable: %d\n", errno);
         response->error = err;
         response->data = "Error when insert to rhashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;

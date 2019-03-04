@@ -18,27 +18,24 @@ int main(int argc, char **argv) {
 
 void *test_rhashtable(data arg) {
     int i;
+    char key[KEY_SIZE];
+    char key2[KEY_SIZE];
+    char key3[KEY_SIZE];
     for (i = 10; i < 15; i++) {
-        char key[KEY_SIZE];
-        memcpy(key, "1337", KEY_SIZE);
-        printf("KEY: %s\n", key);
+        memcpy(key, "10", KEY_SIZE);
         reset_netlink();
         insert_rhashtable(key);
-    //}
-    //int j;
-    //for (j = 10; j < 15; j++) {
-        char key2[KEY_SIZE];
-
-        memcpy(key2, "1337", KEY_SIZE);
+    }
+    int j;
+    for (j = 10; j < 15; j++) {
+        memcpy(key2, "10", KEY_SIZE);
         reset_netlink();
         get_rhashtable(key2);
-    //}
+    }
 
-    //int k;
-    //for (k = 10; k < 15; k++) {
-        char key3[KEY_SIZE];
-
-        memcpy(key3, "1337", KEY_SIZE);
+    int k;
+    for (k = 10; k < 15; k++) {
+        memcpy(key3, "10", KEY_SIZE);
         reset_netlink();
         delete_rhashtable(key3);
     }
@@ -49,7 +46,7 @@ void delete_rhashtable(char* key){
     DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
 
     delete_struct->OP_code = DELETE;
-    strncpy(delete_struct->key, key, KEY_SIZE);
+    memcpy(delete_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(DELETE, delete_struct);
 
@@ -73,7 +70,7 @@ void get_rhashtable(char* key){
     GET_struct *get_struct = calloc(1,sizeof(GET_struct));
 
     get_struct->OP_code = GET;
-    strncpy(get_struct->key, key, KEY_SIZE);
+    memcpy(get_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(GET, get_struct);
 
