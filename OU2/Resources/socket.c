@@ -117,21 +117,22 @@ int createsocket_client(sock_init_struct *sis) {
 
 
 
-int send_pdu(int sock,PDU_struct *pdu){
+int send_pdu(int sock, PDU_struct *pdu){
 
-    if(send(sock,pdu->pdu,pdu->numbytes,MSG_DONTWAIT|MSG_NOSIGNAL)==-1){
-        //perror("send");
+    if(send(sock,pdu->pdu,pdu->numbytes,MSG_NOSIGNAL)==-1){
+        perror("send");
         return -1;
     }
-
     return 0;
 }
 
-void *receive_pdu(int sock) {
+char *receive_pdu(int sock) {
     ssize_t nread = 0;
-    char buffer_read[HEADERSIZE];
-    while(nread<HEADERSIZE){
-        nread=recv(sock,buffer_read,HEADERSIZE,MSG_PEEK|MSG_DONTWAIT);
+    char *buffer_read = calloc(1,13);
+    while(nread<12){
+        printf("buffer_read before1: %s\n", buffer_read);
+        nread=recv(sock,buffer_read,12,0);
+        printf("buffer_read2: %s\n", buffer_read);
         //sleep(3);
         if(nread == 0){
             return (void *)-100;
@@ -141,7 +142,8 @@ void *receive_pdu(int sock) {
 
 
     }
-    char *pdu=NULL;
-    pdu= read_exactly(buffer_read,sock);
-    return pdu;
+    printf("buffer_read3: %s\n", buffer_read);
+
+    //pdu= read_exactly(buffer_read,sock);
+    return buffer_read;
 }

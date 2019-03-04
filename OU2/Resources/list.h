@@ -10,7 +10,7 @@ int NRTHR;
 
 typedef struct PDU_struct {
 	size_t numbytes;
-	void *pdu;
+	char *pdu;
 }PDU_struct;
 
 typedef struct node {
