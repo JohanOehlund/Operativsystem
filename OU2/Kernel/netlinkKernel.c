@@ -24,6 +24,7 @@ static void recieve_data(struct sk_buff *skb) {
         return;
     }
 
+
     nlh_kernel=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
     NETLINK_CB(skb_out).dst_group = 0;
     memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
