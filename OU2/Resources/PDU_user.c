@@ -5,7 +5,6 @@
 #include "PDU_user.h"
 
 PDU_struct *read_exactly(int sock, uint8_t OP_code){
-
     PDU_struct *PDU_struct;
 
     switch (OP_code){
@@ -29,11 +28,13 @@ PDU_struct *read_exactly(int sock, uint8_t OP_code){
 }
 
 PDU_struct *read_INIT(int sock) {
-    size_t nread;
+    printf("READ INIT\n");
+    size_t nread = 0;
 
     data header=calloc(1,HEADERSIZE);
     while(nread<HEADERSIZE){
         nread=recv(sock,header,HEADERSIZE,0);
+        printf("nread INIT: %zu\n", nread);
         if(nread==-1) {
             continue;
         }
@@ -49,7 +50,7 @@ PDU_struct *read_INIT(int sock) {
 
 }
 PDU_struct *read_INSERT(int sock) {
-    size_t nread;
+    size_t nread = 0;
 
 
     char *header = calloc(1, HEADERSIZE);
@@ -81,7 +82,7 @@ PDU_struct *read_INSERT(int sock) {
 
 }
 PDU_struct *read_GET(int sock) {
-    size_t nread;
+    size_t nread = 0;
 
     data header=calloc(1,HEADERSIZE);
     while(nread<HEADERSIZE){
@@ -108,7 +109,7 @@ PDU_struct *read_GET(int sock) {
 
 }
 PDU_struct *read_DELETE(int sock) {
-    size_t nread;
+    size_t nread = 0;
 
     data header=calloc(1,HEADERSIZE);
     while(nread<HEADERSIZE){
@@ -148,8 +149,8 @@ PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
     pdu->data = malloc(pdu->data_bytes);
     memcpy(pdu->data, response_buffer, pdu->data_bytes);
 
-//    printf("Received message error: %u\n", pdu->error);
-//    printf("Received message numbytes: %u\n", pdu->data_bytes);
+    printf("Received message error: %u\n", pdu->error);
+    printf("Received message numbytes: %u\n", pdu->data_bytes);
     printf("Received message data: %s\n", (char*)pdu->data);
     return pdu;
 }
@@ -224,11 +225,11 @@ data create_INSERT_buffer(data pdu){
     data head = response_buffer;
     memcpy(response_buffer, &insert_struct->OP_code, 1);
     response_buffer++;
-    memcpy(response_buffer, &insert_struct->data_bytes, 3);
+    memcpy(response_buffer, &insert_struct->data_bytes, 2);
     response_buffer+=3;
     memcpy(response_buffer, &insert_struct->key, KEY_SIZE);
     response_buffer+=KEY_SIZE;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
-
+    printf("insert_struct->key %s\n", (char*)insert_struct->key);
     return head;
 }

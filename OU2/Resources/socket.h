@@ -23,7 +23,6 @@
 #include <string.h>
 #include "PDU_user.h"
 
-
 typedef struct sock_init_struct {
     bool isUDP;
     char *nexthost;

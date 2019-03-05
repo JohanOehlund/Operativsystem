@@ -17,27 +17,28 @@ int main(int argc, char **argv){
         printWrongParams(argv[0]);
         return EXIT_FAILURE;
     }
+
     clients_sockets=llist_empty();
     sender_list=llist_empty();
     client_ids=llist_empty();
     availableThreads = llist_empty();
     terminatedThreads = llist_empty();
     pthread_t trd[5];
-    setup_netlink();
 
-    if(pthread_create(&trd[0], NULL, acceptConnections, (void*)argv)!=0){
+    setup_netlink();
+    /*if(pthread_create(&trd[0], NULL, acceptConnections, (void*)argv)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
 
 
     if(pthread_join(trd[0],NULL) != 0) {
-            perror("thread join");
-            exit(EXIT_FAILURE);
-        }
+        perror("thread join");
+        exit(EXIT_FAILURE);
+    }*/
 
-
-
+    acceptConnections((void*)argv);
+    //test_rhashtable((void*)0);
     return 0;
 }
 
@@ -102,21 +103,27 @@ void *acceptConnections(void *arg) {
  * @comment If client leaves then thread terminates and adds its number in the "terminatedthreads" list.
  */
 void *clientlistener(void *arg){
+
     clientThreadInfo *cti = (clientThreadInfo *)arg;
     int temp_socket = cti->client_sock;
 
     while(1){
-        usleep(1000000);
 
-        PDU_struct *PDU_struct = receive_pdu(temp_socket);
-        printf("OP: %u\n", PDU_struct->OP_code);
-        printf("Numbytes: %zu\n", PDU_struct->numbytes);
+        usleep(1000000);
         reset_netlink();
+        PDU_struct *PDU_struct = receive_pdu(temp_socket);
+
+        /*data t1 = calloc(1,HEADERSIZE);
+        memset(t1, INIT, 1);
+
+        printf("OP in clientlistener: %u\n", PDU_struct->OP_code);
+        printf("Numbytes: %zu\n", PDU_struct->numbytes);*/
         memcpy(NLMSG_DATA(nlh_user), PDU_struct->pdu, PDU_struct->numbytes);
 
+        printf("Sending message to kernel\n");
         sendmsg(sock_fd,&msg,0);
 
-        //printf("Waiting for message from kernel\n");
+        printf("Waiting for message from kernel\n");
         recvmsg(sock_fd, &msg, 0);
 
         PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
@@ -174,6 +181,163 @@ void printWrongParams(char *progName) {
             progName,
             "<PORT> <SERVERNAME>");
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+void *test_rhashtable(data arg) {
+    setup_netlink();
+
+    init_rhashtable();
+    int i;
+    char key[KEY_SIZE];
+    char key2[KEY_SIZE];
+    char key3[KEY_SIZE];
+    for (i = 10; i < 15; i++) {
+        memcpy(key, "10", KEY_SIZE);
+        reset_netlink();
+        insert_rhashtable(key);
+    //}
+    //printf("HEJHEJ2\n");
+    //int j;
+    //for (j = 10; j < 15; j++) {
+        //memcpy(key2, "10", KEY_SIZE);
+        reset_netlink();
+        get_rhashtable(key);
+    //}
+    //printf("HEJHEJ3\n");
+    //int k;
+    //for (k = 10; k < 15; k++) {
+        //memcpy(key3, "10", KEY_SIZE);
+        reset_netlink();
+        delete_rhashtable(key);
+    }
+}
+
+void delete_rhashtable(char* key){
+    DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
+
+    delete_struct->OP_code = DELETE;
+    memcpy(delete_struct->key, key, KEY_SIZE);
+
+    data action = PDU_to_buffer_user(DELETE, delete_struct);
+
+    memcpy(NLMSG_DATA(nlh_user), action, 68);
+
+    //printf("Sending message to kernel\n");
+    sendmsg(sock_fd,&msg,0);
+
+    //printf("Waiting for message from kernel\n");
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(delete_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
+}
+
+void get_rhashtable(char* key){
+    GET_struct *get_struct = calloc(1,sizeof(GET_struct));
+
+    get_struct->OP_code = GET;
+    memcpy(get_struct->key, key, KEY_SIZE);
+
+    data action = PDU_to_buffer_user(GET, get_struct);
+
+    memcpy(NLMSG_DATA(nlh_user), action, 68);
+
+    //printf("Sending message to kernel\n");
+    sendmsg(sock_fd,&msg,0);
+
+    //printf("Waiting for message from kernel\n");
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(get_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
+}
+
+void insert_rhashtable(char* key){
+    INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
+    insert_struct->OP_code=INSERT;
+    memcpy(insert_struct->key, key, KEY_SIZE);
+    insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD)+1;
+    insert_struct->data = calloc(1,(insert_struct->data_bytes));
+
+    memcpy(insert_struct->data, TEST_DATA, insert_struct->data_bytes);
+    data action = PDU_to_buffer_user(INSERT, insert_struct);
+
+    memcpy(NLMSG_DATA(nlh_user), action, (insert_struct->data_bytes)+HEADERSIZE+KEY_SIZE);
+
+    //printf("Sending message to kernel\n");
+    sendmsg(sock_fd,&msg,0);
+
+    //printf("Waiting for message from kernel\n");
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+
+    free(insert_struct->data);
+    free(insert_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
+}
+
+void init_rhashtable() {
+
+
+    INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
+    init_struct->OP_code = INIT;
+
+    data action = PDU_to_buffer_user(INIT, init_struct);
+
+    memcpy(NLMSG_DATA(nlh_user), action, HEADERSIZE);
+
+    //printf("Sending message to kernel\n");
+    sendmsg(sock_fd,&msg,0);
+
+    //printf("Waiting for message from kernel\n");
+    recvmsg(sock_fd, &msg, 0);
+
+    PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
+
+    free(init_struct);
+    free(action);
+    free(pdu->data);
+    free(pdu);
+
+}*/
 
 int setup_netlink(){
     sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);

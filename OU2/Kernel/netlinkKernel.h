@@ -17,6 +17,7 @@
 #define MAX_ENTRIES	1000000
 #define HT_SIZE	8
 #define NETLINK_USER 31
+#define HEADERSIZE 4
 
 #define TEST_DATA ("Jag heter HASSE!!!")
 

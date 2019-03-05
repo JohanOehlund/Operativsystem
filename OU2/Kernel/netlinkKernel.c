@@ -6,6 +6,7 @@ extern int errno = 0;
 
 static void recieve_data(struct sk_buff *skb) {
 
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     nlh_kernel=(struct nlmsghdr*)skb->data;
     PDU_kernel_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel));
     if(response == NULL){
@@ -16,21 +17,21 @@ static void recieve_data(struct sk_buff *skb) {
 
     pid = nlh_kernel->nlmsg_pid; //pid of sending process
     msg_size=(response->data_bytes)+KERNEL_HEADERSIZE;
-    skb_out = nlmsg_new(msg_size,0);
 
+    skb_out = nlmsg_new(msg_size,0);
     if(!skb_out){
         printk(KERN_ERR "Failed to allocate new skb\n");
         return;
     }
 
     nlh_kernel=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
-
     NETLINK_CB(skb_out).dst_group = 0;
     memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
     int res=nlmsg_unicast(nl_sk,skb_out,pid);
 
     if(res<0)
         printk(KERN_ERR "Error while sending bak to user\n");
+
 }
 
 
@@ -88,7 +89,7 @@ static void read_DELETE_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
     char key[KEY_SIZE];
-    request++;
+    request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct test_obj *obj_get;
@@ -123,7 +124,7 @@ static void read_GET_struct(PDU_kernel_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
     char key[KEY_SIZE];
-    request++;
+    request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct test_obj *obj_get;
@@ -162,14 +163,14 @@ static void read_INSERT_struct(PDU_kernel_struct *response, data request){
         return NULL;
     }
 
-    u32 data_bytes;
+    u16 data_bytes;
     request++;
+    memcpy(&data_bytes, request, 2);
+    printk(KERN_INFO "obj->data_bytes: %u\n", data_bytes);
+    request+=3;
     memcpy(obj->key, request, KEY_SIZE);
-    printk(KERN_INFO "obj->key: %s\n", obj->key);
+    printk(KERN_INFO "obj->key: %s\n", (char*)obj->key);
     request+=KEY_SIZE;
-    memcpy(&data_bytes, request, 4);
-    printk(KERN_INFO "data_bytes: %d\n", data_bytes);
-    request+=4;
     obj->data = kmalloc(data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (data_bytes));
     printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);

@@ -7,10 +7,10 @@ CFLAGS =  -g -pthread -std=c11 -D_DEFAULT_SOURCE
 LIBS = -lpthread -lm
 
 #SOURCE FILES
-SRCS := server.c ../Resources/PDU_user.c ../Resources/list.c ../Resources/socket.c
+SRCS := server.c ../Resources/PDU_user.c ../Resources/list.c ../Resources/socket.c 
 
 #HEADER FILES
-HDRS = server.h ../Resources/PDU_user.h ../Resources/list.h ../Resources/socket.h
+HDRS = server.h ../Resources/PDU_user.h ../Resources/list.h ../Resources/socket.h 
 
 #Rules
 OBJS := $(SRCS:.c=.o) $(HDRS)

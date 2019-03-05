@@ -127,7 +127,7 @@ int send_pdu(int sock, PDU_struct *pdu){
 }
 
 PDU_struct *receive_pdu(int sock) {
-    ssize_t nread = 0;
+    size_t nread = 0;
     char buffer_read[HEADERSIZE];
     PDU_struct *PDU_struct;
     while(nread<HEADERSIZE){
