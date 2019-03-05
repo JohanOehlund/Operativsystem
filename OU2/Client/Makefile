@@ -2,7 +2,7 @@
 CC = gcc
 
 #CFlAGS AND LIBS
-CFLAGS =  -g -pthread -std=c99 -Wall -Werror -D_DEFAULT_SOURCE
+CFLAGS =  -g -pthread -std=c11 -Werror -D_DEFAULT_SOURCE
 
 LIBS = -lpthread -lm
 

@@ -5,16 +5,20 @@
 #include <string.h>
 #include <stdint.h>
 
+typedef void* data;
+
+
 int waitingthreads;
 int NRTHR;
 
 typedef struct PDU_struct {
+	uint8_t OP_code;
 	size_t numbytes;
-	char *pdu;
+	data pdu;
 }PDU_struct;
 
 typedef struct node {
-	void* data;
+	data data;
 	struct node* next;
 	struct node* previous;
 }node;
@@ -35,7 +39,6 @@ typedef struct SLISTSERVERS_struct {
 
 }SLISTSERVERS_struct;
 
-typedef void* data;
 typedef node* llist_position;
 
 
@@ -59,7 +62,7 @@ data llist_removefirst(llist *l);
 
 data llist_removefirst_INT(llist *l);
 
-        PDU_struct *llist_removefirst_PDU(llist *l);
+PDU_struct *llist_removefirst_PDU(llist *l);
 
 llist_position llist_remove(llist *l, llist_position p);
 

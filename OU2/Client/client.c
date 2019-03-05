@@ -15,7 +15,7 @@ int main(int argc, char **argv){
         fprintf(stderr,"\n mutex init failed\n");
         return 1;
     }
-    char message[255+1]={0};
+    char message[MAXMESSLEN+1]={0};
     int client_server;
     //pthread_t trd[1];
 
@@ -25,23 +25,40 @@ int main(int argc, char **argv){
     }
     PDU_struct *PDU_struct;
     while(1){
-        if(fgets(message,255,stdin)==NULL){
-            usleep(1000);
-            continue;
+
+        if(scanf("%s",message) < 0){
+            fprintf(stderr,"Error when reading from stdin\n");
+            return -1;
         }
-        if(strncmp(message, "\n", 255)==0) {
-            continue;
+        int i =0;
+        while(message[i]) {
+            message[i] = tolower(message[i]);
+            i++;
         }
-        if(strncmp(message, EXIT, 4)==0) {
+        printf("message: %s\n", message);
+        if(strncmp(message, "\n", MAXMESSLEN)==0) {
+            continue;
+        }else if(strncmp(message, EXIT, 4)==0) {
 
             printf("Disconnecting from server.\n");
             //closeClient(sock);
             return -1;
+        }else if(strncmp(message, "init", strlen(message))==0){
+            PDU_struct = create_INIT_to_server();
+
+        }else if(strncmp(message, "insert", 6) == 0){
+            PDU_struct = create_INSERT_to_server("key","message");
+        }else if(strncmp(message, "get", strlen(message))==0){
+            PDU_struct = create_GET_to_server("key");
+        }else if(strncmp(message, "delete", 6)==0){
+            PDU_struct = create_DELETE_to_server("key");
         }
-        PDU_struct = create_message_to_server(message);
+
+        send_pdu(client_server, PDU_struct);
+        /*PDU_struct = create_message_to_server(message);
         send_pdu(client_server, PDU_struct);
         free(PDU_struct->pdu);
-        free(PDU_struct);
+        free(PDU_struct);*/
 
 
     }
@@ -49,13 +66,70 @@ int main(int argc, char **argv){
     return 0;
 }
 
-PDU_struct *create_message_to_server(char *input) {
 
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
-    size_t messlen = strnlen(input, MAXMESSLEN)+1);
-    PDU_struct->pdu = calloc(1, messlen);
-    PDU_struct->numbytes = messlen;
 
+PDU_struct *create_INIT_to_server(){
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+
+    INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
+    init_struct->OP_code = INIT;
+
+    data buffer = PDU_to_buffer_user(INIT, init_struct);
+
+    PDU_struct->OP_code = INIT;
+    PDU_struct->numbytes = HEADERSIZE;
+    PDU_struct->pdu = buffer;
+    return PDU_struct;
+}
+
+PDU_struct *create_INSERT_to_server(char* key, char* data){
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+
+    INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
+    insert_struct->OP_code=INSERT;
+    memcpy(insert_struct->key, key, KEY_SIZE);
+    insert_struct->data_bytes=strnlen(data, MAX_PAYLOAD)+1;
+    insert_struct->data = calloc(1,(insert_struct->data_bytes));
+
+    memcpy(insert_struct->data, data, (insert_struct->data_bytes));
+
+    void *action = PDU_to_buffer_user(INSERT, insert_struct); //kan inte vara data måste vara void*....
+
+    PDU_struct->OP_code = INSERT;
+    PDU_struct->numbytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
+    PDU_struct->pdu = action;
+    return PDU_struct;
+}
+
+PDU_struct *create_GET_to_server(char* key) {
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+
+    GET_struct *get_struct = calloc(1,sizeof(GET_struct));
+
+    get_struct->OP_code = GET;
+    memcpy(get_struct->key, key, KEY_SIZE);
+
+    data action = PDU_to_buffer_user(GET, get_struct);
+    PDU_struct->OP_code = GET;
+    PDU_struct->numbytes = HEADERSIZE + KEY_SIZE;
+    PDU_struct->pdu = action;
+    return PDU_struct;
+
+
+}
+
+PDU_struct *create_DELETE_to_server(char* key) {
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+
+    DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
+
+    delete_struct->OP_code = DELETE;
+    memcpy(delete_struct->key, key, KEY_SIZE);
+
+    data action = PDU_to_buffer_user(DELETE, delete_struct);
+    PDU_struct->OP_code = DELETE;
+    PDU_struct->numbytes = HEADERSIZE + KEY_SIZE;
+    PDU_struct->pdu = action;
     return PDU_struct;
 
 
@@ -101,8 +175,6 @@ int setupConnection(char **argv) {
     sis->isUDP=false;
     sis->nexthost=argv[3];
     sis->nextportString=argv[4];
-    printf("sis->nexthost: %s\n", sis->nexthost);
-    printf("sis->nextportString: %s\n", sis->nextportString);
     if(strncmp("cs",argv[2],2)==0){
         if((client_server=connectCS(sis,argv[1]))==-1){
             free(sis);

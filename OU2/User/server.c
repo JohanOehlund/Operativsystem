@@ -23,6 +23,7 @@ int main(int argc, char **argv){
     availableThreads = llist_empty();
     terminatedThreads = llist_empty();
     pthread_t trd[5];
+    setup_netlink();
 
     if(pthread_create(&trd[0], NULL, acceptConnections, (void*)argv)!=0){
         perror("pthread_create");
@@ -103,16 +104,29 @@ void *acceptConnections(void *arg) {
 void *clientlistener(void *arg){
     clientThreadInfo *cti = (clientThreadInfo *)arg;
     int temp_socket = cti->client_sock;
-    while(1){
-        usleep(1000);
 
-        char *pdu = receive_pdu(temp_socket);
-        char *temp_data = calloc(1,30);
+    while(1){
+        usleep(1000000);
+
+        PDU_struct *PDU_struct = receive_pdu(temp_socket);
+        printf("OP: %u\n", PDU_struct->OP_code);
+        printf("Numbytes: %zu\n", PDU_struct->numbytes);
+        reset_netlink();
+        memcpy(NLMSG_DATA(nlh_user), PDU_struct->pdu, PDU_struct->numbytes);
+
+        sendmsg(sock_fd,&msg,0);
+
+        //printf("Waiting for message from kernel\n");
+        recvmsg(sock_fd, &msg, 0);
+
+        PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
+
+
+        /*data temp_data = calloc(1,30);
         memcpy(temp_data, pdu, 30);
-        printf("temp_data: %s\n", temp_data);
+        printf("temp_data: %s\n", temp_data);*/
 
     }
-    printf("i listener\n");
 
     llist_insertfirst(terminatedThreads, &cti->thread_num);
     return NULL;
@@ -159,4 +173,51 @@ void printWrongParams(char *progName) {
             "Invalid parameters",
             progName,
             "<PORT> <SERVERNAME>");
+}
+
+int setup_netlink(){
+    sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
+    if(sock_fd<0)
+        return -1;
+
+    memset(&src_addr, 0, sizeof(src_addr));
+    src_addr.nl_family = AF_NETLINK;
+    src_addr.nl_pid = getpid(); /* self pid */
+
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.nl_family = AF_NETLINK;
+    dest_addr.nl_pid = 0;
+    dest_addr.nl_groups = 0;
+
+    nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user->nlmsg_pid = getpid();
+    nlh_user->nlmsg_flags = 0;
+
+    iov.iov_base = (void *)nlh_user;
+    iov.iov_len = nlh_user->nlmsg_len;
+    msg.msg_name = (void *)&dest_addr;
+    msg.msg_namelen = sizeof(dest_addr);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    if(bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr))< 0){
+        perror("Error: ");
+        return -2;
+    }
+
+}
+
+
+void reset_netlink(){
+
+    //nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user->nlmsg_pid = getpid();
+    nlh_user->nlmsg_flags = 0;
+
+    //printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
 }

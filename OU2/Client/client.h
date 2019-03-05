@@ -6,14 +6,22 @@
 #define DODOU2_CLIENT_H
 
 #include "../Resources/socket.h"
-#define EXIT "exit"
-#define MAXMESSLEN 1024
 
 int setupConnection(char **argv);
 
 int connectCS(sock_init_struct *sis,char *clientname);
 
 PDU_struct *setupJOINPDU(char *clientname);
+
+PDU_struct *create_GET_to_server(char* key);
+
+PDU_struct *create_message_to_server(char *input);
+
+PDU_struct *create_INSERT_to_server(char* key, char* data);
+
+PDU_struct *create_DELETE_to_server(char* key);
+
+PDU_struct *create_INIT_to_server();
 
 void printWrongParams(char *progName);
 

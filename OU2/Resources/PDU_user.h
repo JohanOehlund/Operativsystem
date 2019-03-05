@@ -4,6 +4,7 @@
 
 #ifndef OU2_PDU_H
 #define OU2_PDU_H
+typedef void* data;
 
 #include <sys/socket.h>
 #include <linux/netlink.h>
@@ -12,12 +13,14 @@
 #include <stdio.h>
 #include <zconf.h>
 #include <stdint.h>
+#include <ctype.h>
+#include "list.h"
 
-typedef void* data;
+#define EXIT "exit"
 
+#define TEST_DATA ("Jag heter HASSE!!!")
 
-#define KEY_SIZE 64
-
+#define MAX_PAYLOAD 1024 /* maximum payload size*/
 
 //Defines for client-server
 #define INIT 11
@@ -25,10 +28,9 @@ typedef void* data;
 #define GET 13
 #define DELETE 14
 
-#define INIT_HEADERSIZE      1
-#define INSERT_HEADERSIZE   (5 + KEY_SIZE)
-#define GET_HEADERSIZE      (1 + KEY_SIZE)
-#define DELETE_HEADERSIZE   (1 + KEY_SIZE)
+#define HEADERSIZE           4
+#define KEY_SIZE 64
+#define MAXMESSLEN 50
 
 //Kernel space struct.
 typedef struct PDU_kernel_struct {
@@ -63,19 +65,30 @@ typedef struct DELETE_struct {
 
 }DELETE_struct;
 
+PDU_struct *read_exactly(int sock, uint8_t OP_code);
+
 PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh);
 
 data PDU_to_buffer_user(uint8_t OP_code, data pdu);
 
-static data create_DELETE_buffer(data pdu);
+data create_DELETE_buffer(data pdu);
 
-static data create_GET_buffer(data pdu);
+data create_GET_buffer(data pdu);
 
-static data create_GET_buffer(data pdu);
+data create_GET_buffer(data pdu);
 
-static data create_INIT_buffer(data pdu);
+data create_INIT_buffer(data pdu);
 
-static data create_INSERT_buffer(data pdu);
+data create_INSERT_buffer(data pdu);
+
+PDU_struct *read_DELETE(int sock);
+
+PDU_struct *read_GET(int sock);
+
+PDU_struct *read_INIT(int sock);
+
+PDU_struct *read_INSERT(int sock);
+
 
 
 

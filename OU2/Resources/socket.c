@@ -126,13 +126,12 @@ int send_pdu(int sock, PDU_struct *pdu){
     return 0;
 }
 
-char *receive_pdu(int sock) {
+PDU_struct *receive_pdu(int sock) {
     ssize_t nread = 0;
-    char *buffer_read = calloc(1,13);
-    while(nread<12){
-        printf("buffer_read before1: %s\n", buffer_read);
-        nread=recv(sock,buffer_read,12,0);
-        printf("buffer_read2: %s\n", buffer_read);
+    char buffer_read[HEADERSIZE];
+    PDU_struct *PDU_struct;
+    while(nread<HEADERSIZE){
+        nread=recv(sock,buffer_read,HEADERSIZE,MSG_PEEK);
         //sleep(3);
         if(nread == 0){
             return (void *)-100;
@@ -142,8 +141,8 @@ char *receive_pdu(int sock) {
 
 
     }
-    printf("buffer_read3: %s\n", buffer_read);
+    //char *pdu=NULL;
+    PDU_struct = read_exactly(sock, (uint8_t)buffer_read[0]);
 
-    //pdu= read_exactly(buffer_read,sock);
-    return buffer_read;
+    return PDU_struct;
 }
