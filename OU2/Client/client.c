@@ -26,8 +26,8 @@ int main(int argc, char **argv){
         printf("Exit program.\n");
         exit(EXIT_FAILURE);
     }
-    PDU_struct *PDU_struct_send;
-    PDU_struct *PDU_struct_recieve;
+    PDU_struct *PDU_struct_send = NULL;
+    PDU_struct *PDU_struct_recieve = NULL;
 
     do {
 
@@ -64,6 +64,7 @@ int main(int argc, char **argv){
                 break;
             case 5:
                 printf("Closing program\n");
+                return 0;
                 break;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
@@ -82,8 +83,8 @@ int main(int argc, char **argv){
         printf("data i return: %s\n", (char*)PDU_struct_recieve->data);
 
 
-
-
+        free_struct(USER,PDU_struct_send);
+        free_struct(KERNEL,PDU_struct_recieve);
     }while (choice != 5);
 
     return 0;
@@ -92,16 +93,18 @@ int main(int argc, char **argv){
 
 
 PDU_struct *create_INIT_to_server(){
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct)+sizeof(data));
 
     INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
-    init_struct->OP_code = INIT;
+    init_struct->OP_code = USER;
 
     data buffer = PDU_to_buffer_user(INIT, init_struct);
 
-    PDU_struct->OP_code = INIT;
+    PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = HEADERSIZE;
     PDU_struct->data = buffer;
+
+    free_struct(INIT, init_struct);
     return PDU_struct;
 }
 
@@ -119,9 +122,11 @@ PDU_struct *create_INSERT_to_server(char* key, char* data){
 
     void *action = PDU_to_buffer_user(INSERT, insert_struct); //kan inte vara data måste vara void*....
 
-    PDU_struct->OP_code = INSERT;
+    PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
     PDU_struct->data = action;
+
+    free_struct(INSERT, insert_struct);
     return PDU_struct;
 }
 
@@ -135,12 +140,12 @@ PDU_struct *create_GET_to_server(char* key) {
     memcpy(get_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(GET, get_struct);
-    PDU_struct->OP_code = GET;
+    PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = HEADERSIZE + KEY_SIZE;
     PDU_struct->data = action;
+
+    free_struct(GET, get_struct);
     return PDU_struct;
-
-
 }
 
 PDU_struct *create_DELETE_to_server(char* key) {
@@ -152,12 +157,12 @@ PDU_struct *create_DELETE_to_server(char* key) {
     memcpy(delete_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(DELETE, delete_struct);
-    PDU_struct->OP_code = DELETE;
+    PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = HEADERSIZE + KEY_SIZE;
     PDU_struct->data = action;
+
+    free_struct(DELETE, delete_struct);
     return PDU_struct;
-
-
 }
 
 /* Connects direct to a server without using the nameserver.

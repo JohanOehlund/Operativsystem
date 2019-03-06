@@ -28,6 +28,7 @@ typedef void* data;
 #define GET 13
 #define DELETE 14
 #define KERNEL 15
+#define USER 16
 
 #define HEADERSIZE 4
 #define KEY_SIZE 64
@@ -91,6 +92,8 @@ PDU_struct *read_INIT(int sock);
 PDU_struct *read_INSERT(int sock);
 
 PDU_struct *read_KERNEL(int sock);
+
+void free_struct(uint8_t OP_code, data free_struct);
 
 
 

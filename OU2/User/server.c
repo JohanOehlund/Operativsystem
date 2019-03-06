@@ -140,6 +140,8 @@ void *clientlistener(void *arg){
 
 
         send_pdu(temp_socket, pdu);
+
+        free_struct(KERNEL, pdu);
     }
 
     llist_insertfirst(terminatedThreads, &cti->thread_num);

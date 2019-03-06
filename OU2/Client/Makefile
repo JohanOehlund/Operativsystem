@@ -35,10 +35,10 @@ runcs:
 	./client HASSE cs cyclops 6666
 
 valgrind:
-	valgrind --leak-check=full --track-origins=yes  ./client HASSE cs quicksilver 6666
+	valgrind --leak-check=full --track-origins=yes  ./client HASSE cs OIN 6666
 
 helgrind:
-	valgrind --tool=helgrind --history-level=approx ./client HASSE cs quicksilver 6666
+	valgrind --tool=helgrind --history-level=approx ./client HASSE cs OIN 6666
 
 #MISC CMDS:
 clean:

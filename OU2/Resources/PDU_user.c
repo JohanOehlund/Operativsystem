@@ -40,13 +40,13 @@ PDU_struct *read_KERNEL(int sock) {
             continue;
         }
     }
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
 
     uint16_t msg_size = 0;
     header++;
     memcpy(&msg_size, header, 2);
     printf("msg_size: %u\n", msg_size);
-    PDU_struct->data = calloc(1,msg_size);
+    PDU_struct->data = calloc(1,msg_size + sizeof(data));
     nread = 0;
     while(nread<msg_size){
         nread=recv(sock,PDU_struct->data,msg_size,0);
@@ -72,7 +72,7 @@ PDU_struct *read_INIT(int sock) {
             continue;
         }
     }
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
 
 
     PDU_struct->OP_code = INIT;
@@ -96,7 +96,7 @@ PDU_struct *read_INSERT(int sock) {
         }
     }
 
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
     PDU_struct->OP_code = INSERT;
     uint16_t mess_len;
     header++;
@@ -122,7 +122,7 @@ PDU_struct *read_INSERT(int sock) {
 PDU_struct *read_GET(int sock) {
     size_t nread = 0;
 
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
     PDU_struct->OP_code = GET;
     PDU_struct->data_bytes = HEADERSIZE + KEY_SIZE;
 
@@ -141,7 +141,7 @@ PDU_struct *read_GET(int sock) {
 PDU_struct *read_DELETE(int sock) {
     size_t nread = 0;
 
-    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
     PDU_struct->OP_code = DELETE;
     PDU_struct->data_bytes = HEADERSIZE + KEY_SIZE;
 
@@ -158,7 +158,7 @@ PDU_struct *read_DELETE(int sock) {
 }
 
 PDU_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
-    PDU_struct *pdu = calloc(1, sizeof(PDU_struct));
+    PDU_struct *pdu = calloc(1, sizeof(PDU_struct) + sizeof(data));
 
     data response_buffer = NLMSG_DATA(nlh);
     data head = response_buffer;
@@ -233,10 +233,8 @@ data create_GET_buffer(data pdu){
 data create_INIT_buffer(data pdu){
     data response_buffer = calloc(1, HEADERSIZE);
 
-    data head = response_buffer;
     memset(response_buffer, INIT, 1);
-
-    return head;
+    return response_buffer;
 }
 
 data create_INSERT_buffer(data pdu){
@@ -254,4 +252,34 @@ data create_INSERT_buffer(data pdu){
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);
     return head;
+}
+
+
+/* Free a struct.
+ * @param   p -  The generic struct that will be free'd.
+ * @return
+ */
+void free_struct(uint8_t OP_code, data free_struct){
+
+    if(OP_code == INIT){
+        INIT_struct *temp_struct = (INIT_struct*) free_struct;
+        free(temp_struct);
+    }else if(OP_code == INSERT){
+        INSERT_struct *temp_struct = (INSERT_struct*) free_struct;
+        free(temp_struct->data);
+        free(temp_struct);
+    }else if(OP_code == GET){
+        GET_struct *temp_struct = (GET_struct*) free_struct;
+        free(temp_struct);
+    }else if(OP_code == DELETE){
+        DELETE_struct *temp_struct = (DELETE_struct*) free_struct;
+        free(temp_struct);
+    }else if(OP_code == KERNEL || OP_code == USER){
+        PDU_struct *temp_struct = (PDU_struct*) free_struct;
+        free(temp_struct->data);
+        free(temp_struct);
+    }else{
+        fprintf(stderr, "Invalid OP_code in free_struct.\n");
+    }
+
 }
