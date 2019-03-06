@@ -36,7 +36,7 @@ int main(int argc, char **argv){
         printf("3. Get from hashtable\n");
         printf("4. Delete from hashtable\n");
         printf("5. Exit program\n");
-
+        printf("6. TEST_INT_INSERT()\n");
         printf("\nGive your choice (1 - 5): ");
         scanf("%d", &choice);
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv){
                 scanf("%s", key);
                 printf("\nEnter value: ");
                 scanf("%s", data);
-                PDU_struct_send = create_INSERT_to_server(key, data);
+                PDU_struct_send = create_INSERT_to_server(key, data, strnlen(data, MAXMESSLEN)+1);
                 break;
             case 3:
                 printf("\nEnter key: ");
@@ -66,6 +66,9 @@ int main(int argc, char **argv){
                 printf("Closing program\n");
                 return 0;
                 break;
+            case 6:
+                TEST_INT_INSERT(client_server);
+                continue;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
 
@@ -90,7 +93,59 @@ int main(int argc, char **argv){
     return 0;
 }
 
+void TEST_INT_INSERT(int sock){
 
+    //char buffer[4];
+
+    uint32_t test_data = 1024;
+    char* test_key;
+    int i = 0;
+    for(i = 0; i < 2; i++){
+        //sprintf(buffer, "%d", test);
+        if(i==0){
+            test_key="key1";
+        }else{
+            test_key="key2";
+        }
+        PDU_struct *PDU_struct_send = NULL;
+        PDU_struct *PDU_struct_recieve = NULL;
+
+        uint16_t size = 4;
+        data data = calloc(1,size);
+
+        memcpy(data,&test_data,size);
+        PDU_struct_send = create_INSERT_to_server(test_key, data, size);
+
+        send_pdu(sock, PDU_struct_send);
+
+        PDU_struct_recieve = receive_pdu(sock);
+        //uint16_t res_data = 0;
+        //memcpy(&res_data, PDU_struct_recieve->data, 2);
+        printf("\n DATA INSERT INT: %s\n", (char*)PDU_struct_recieve->data);
+
+        free_struct(USER,PDU_struct_send);
+        free_struct(KERNEL,PDU_struct_recieve);
+
+        PDU_struct *PDU_struct_send2 = NULL;
+        PDU_struct *PDU_struct_recieve2 = NULL;
+
+        PDU_struct_send2 = create_GET_to_server(test_key);
+
+        send_pdu(sock, PDU_struct_send2);
+
+        PDU_struct_recieve2 = receive_pdu(sock);
+        uint16_t res_data = 0;
+        printf(" PDU_struct_recieve->data_bytes: %u\n",  PDU_struct_recieve2->data_bytes);
+        memcpy(&res_data, PDU_struct_recieve2->data, size);
+        printf("\n DATA INSERT INT (%u?): %u\n", test_data, res_data);
+
+        free(data);
+        free_struct(USER,PDU_struct_send2);
+        free_struct(KERNEL,PDU_struct_recieve2);
+    }
+
+
+}
 
 PDU_struct *create_INIT_to_server(){
     PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct)+sizeof(data));
@@ -108,19 +163,19 @@ PDU_struct *create_INIT_to_server(){
     return PDU_struct;
 }
 
-PDU_struct *create_INSERT_to_server(char* key, char* data){
+PDU_struct *create_INSERT_to_server(char* key, data data, uint16_t data_bytes){
 
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
 
     INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
     insert_struct->OP_code=INSERT;
     memcpy(insert_struct->key, key, KEY_SIZE);
-    insert_struct->data_bytes=strnlen(data, MAX_PAYLOAD)+1;
-    insert_struct->data = calloc(1,(insert_struct->data_bytes));
+    insert_struct->data_bytes = data_bytes;
+    insert_struct->data = calloc(1,data_bytes);
 
     memcpy(insert_struct->data, data, (insert_struct->data_bytes));
 
-    void *action = PDU_to_buffer_user(INSERT, insert_struct); //kan inte vara data måste vara void*....
+    void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
 
     PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
@@ -132,7 +187,7 @@ PDU_struct *create_INSERT_to_server(char* key, char* data){
 
 PDU_struct *create_GET_to_server(char* key) {
 
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
 
     GET_struct *get_struct = calloc(1,sizeof(GET_struct));
 
@@ -149,7 +204,7 @@ PDU_struct *create_GET_to_server(char* key) {
 }
 
 PDU_struct *create_DELETE_to_server(char* key) {
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct));
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
 
     DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
 

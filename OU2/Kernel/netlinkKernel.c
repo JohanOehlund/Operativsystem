@@ -145,7 +145,7 @@ static void read_GET_struct(PDU_struct *response, data request){
         printk(KERN_INFO "Key matches.\n");
         response->OP_code = KERNEL;
         response->data = obj_get->data;
-        response->data_bytes = strnlen((char*)response->data, MAX_PAYLOAD)+1;
+        response->data_bytes = obj_get->data_bytes;
     }else{
         printk(KERN_INFO "Key does not match...\n");
         response->OP_code = KERNEL;
@@ -175,7 +175,7 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     request+=KEY_SIZE;
     obj->data = kmalloc(obj->data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (obj->data_bytes));
-    printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
+    //printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
 
     int err = rhashtable_lookup_insert_fast(&ht, &obj->node, test_rht_params);
     if(err == -EEXIST){

@@ -15,13 +15,16 @@ PDU_struct *create_GET_to_server(char* key);
 
 PDU_struct *create_message_to_server(char *input);
 
-PDU_struct *create_INSERT_to_server(char* key, char* data);
+PDU_struct *create_INSERT_to_server(char* key, data data, uint16_t data_bytes);
 
 PDU_struct *create_DELETE_to_server(char* key);
 
 PDU_struct *create_INIT_to_server();
 
 void printWrongParams(char *progName);
+
+
+void TEST_INT_INSERT(int sock);
 
 
 #endif //DODOU2_CLIENT_H

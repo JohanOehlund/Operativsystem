@@ -164,13 +164,14 @@ PDU_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
     uint16_t msg_size = 0;
     data message = NULL;
 
-    memcpy(&pdu->OP_code,response_buffer, 1);
+    //memcpy(&pdu->OP_code,response_buffer, 1);
     response_buffer+=1;
     memcpy(&msg_size,response_buffer, 2);
     response_buffer+=3;
     pdu->data = calloc(1, msg_size + HEADERSIZE);
     memcpy(pdu->data, head, msg_size + HEADERSIZE);
     pdu->data_bytes = msg_size + HEADERSIZE;
+    pdu->OP_code=KERNEL;
     //printf("Received message opcode: %u\n", pdu->OP_code);
     //printf("Received message data_bytes: %u\n", pdu->data_bytes);
     //printf("Received message data: %s\n", (char*)pdu->data);
@@ -239,6 +240,8 @@ data create_INIT_buffer(data pdu){
 data create_INSERT_buffer(data pdu){
     INSERT_struct *insert_struct = (INSERT_struct*) pdu;
     size_t response_buffer_size = (insert_struct->data_bytes)+HEADERSIZE + KEY_SIZE;
+
+    printf("response_buffer_size %zu\n",response_buffer_size);
     data response_buffer = calloc(1, response_buffer_size);
 
     data head = response_buffer;
@@ -250,6 +253,7 @@ data create_INSERT_buffer(data pdu){
     response_buffer+=KEY_SIZE;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);
+
     return head;
 }
 
