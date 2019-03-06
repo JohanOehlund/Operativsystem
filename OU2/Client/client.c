@@ -26,7 +26,8 @@ int main(int argc, char **argv){
         printf("Exit program.\n");
         exit(EXIT_FAILURE);
     }
-    PDU_struct *PDU_struct;
+    PDU_struct *PDU_struct_send;
+    PDU_struct *PDU_struct_recieve;
 
     do {
 
@@ -42,24 +43,24 @@ int main(int argc, char **argv){
 
         switch (choice) {
             case 1:
-                PDU_struct = create_INIT_to_server();
+                PDU_struct_send = create_INIT_to_server();
                 break;
             case 2:
                 printf("\nEnter key: ");
                 scanf("%s", key);
                 printf("\nEnter value: ");
                 scanf("%s", data);
-                PDU_struct = create_INSERT_to_server(key, data);
+                PDU_struct_send = create_INSERT_to_server(key, data);
                 break;
             case 3:
                 printf("\nEnter key: ");
                 scanf("%s", key);
-                PDU_struct = create_GET_to_server(key);
+                PDU_struct_send = create_GET_to_server(key);
                 break;
             case 4:
                 printf("\nEnter key: ");
                 scanf("%s", key);
-                PDU_struct = create_DELETE_to_server(key);
+                PDU_struct_send = create_DELETE_to_server(key);
                 break;
             case 5:
                 printf("Closing program\n");
@@ -69,47 +70,16 @@ int main(int argc, char **argv){
 
         }
 
-
-
-
-
-        /*if(scanf("%s",message) < 0){
-            fprintf(stderr,"Error when reading from stdin\n");
-            return -1;
-        }
-        int i =0;
-        while(message[i]) {
-            message[i] = tolower(message[i]);
-            i++;
-        }
-        printf("message: %s\n", message);
-        if(strncmp(message, "\n", MAXMESSLEN)==0) {
-            continue;
-        }else if(strncmp(message, EXIT, 4)==0) {
-
-            printf("Disconnecting from server.\n");
-            //closeClient(sock);
-            return -1;
-        }else if(strncmp(message, "init", strlen(message))==0){
-            PDU_struct = create_INIT_to_server();
-
-        }else if(strncmp(message, "insert", 6) == 0){
-            PDU_struct = create_INSERT_to_server("key","message");
-        }else if(strncmp(message, "get", strlen(message))==0){
-            PDU_struct = create_GET_to_server("key");
-        }else if(strncmp(message, "delete", 6)==0){
-            PDU_struct = create_DELETE_to_server("key");
-        }*/
-
-        send_pdu(client_server, PDU_struct);
+        send_pdu(client_server, PDU_struct_send);
 
         /*PDU_struct = create_message_to_server(message);
         send_pdu(client_server, PDU_struct);
         free(PDU_struct->data);
         free(PDU_struct);*/
-        PDU_struct = receive_pdu(client_server);
-        printf("OP i return: %u\n", PDU_struct->OP_code);
-
+        PDU_struct_recieve = receive_pdu(client_server);
+        printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
+        printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
+        printf("data i return: %s\n", (char*)PDU_struct_recieve->data);
 
 
 

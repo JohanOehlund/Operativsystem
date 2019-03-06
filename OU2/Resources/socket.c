@@ -141,6 +141,7 @@ PDU_struct *receive_pdu(int sock) {
 
 
     }
+    printf("buffer read[0] i socket %u\n", (uint8_t)buffer_read[0]);
     //char *pdu=NULL;
     PDU_struct = read_exactly(sock, (uint8_t)buffer_read[0]);
 

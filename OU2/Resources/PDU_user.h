@@ -27,8 +27,9 @@ typedef void* data;
 #define INSERT 12
 #define GET 13
 #define DELETE 14
+#define KERNEL 15
 
-#define HEADERSIZE           4
+#define HEADERSIZE 4
 #define KEY_SIZE 64
 #define MAXMESSLEN 50
 
@@ -89,6 +90,7 @@ PDU_struct *read_INIT(int sock);
 
 PDU_struct *read_INSERT(int sock);
 
+PDU_struct *read_KERNEL(int sock);
 
 
 

@@ -20,10 +20,45 @@ PDU_struct *read_exactly(int sock, uint8_t OP_code){
         case DELETE:
             PDU_struct = read_DELETE(sock);
             break;
+        case KERNEL:
+            PDU_struct = read_KERNEL(sock);
+            break;
         default:
-            fprintf(stderr,"INVALID OP-code read_exactly\n");
+            fprintf(stderr,"INVALID OP-code read_exactly: %u\n", OP_code);
             return NULL;
     }
+    return PDU_struct;
+}
+
+PDU_struct *read_KERNEL(int sock) {
+    size_t nread = 0;
+
+    data header=calloc(1,HEADERSIZE);
+    while(nread<HEADERSIZE){
+        nread=recv(sock,header,HEADERSIZE,0);
+        if(nread==-1) {
+            continue;
+        }
+    }
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct));
+
+    uint16_t msg_size = 0;
+    header++;
+    memcpy(&msg_size, header, 2);
+    printf("msg_size: %u\n", msg_size);
+    PDU_struct->data = calloc(1,msg_size);
+    nread = 0;
+    while(nread<msg_size){
+        nread=recv(sock,PDU_struct->data,msg_size,0);
+        if(nread==-1) {
+            continue;
+        }
+    }
+
+    PDU_struct->OP_code = KERNEL;
+    PDU_struct->data_bytes = msg_size;
+    header--;
+    free(header);
     return PDU_struct;
 }
 
@@ -42,8 +77,10 @@ PDU_struct *read_INIT(int sock) {
 
     PDU_struct->OP_code = INIT;
     PDU_struct->data_bytes = HEADERSIZE;
-    PDU_struct->data = header;
+    PDU_struct->data = calloc(1, HEADERSIZE);
+    memcpy(PDU_struct->data, header, HEADERSIZE);
 
+    free(header);
     return PDU_struct;
 
 }
@@ -51,7 +88,7 @@ PDU_struct *read_INSERT(int sock) {
     size_t nread = 0;
 
 
-    char *header = calloc(1, HEADERSIZE);
+    data header = calloc(1, HEADERSIZE);
     while(nread<HEADERSIZE){
         nread=recv(sock,header,HEADERSIZE,MSG_PEEK);
         if(nread==-1) {
@@ -67,6 +104,8 @@ PDU_struct *read_INSERT(int sock) {
     PDU_struct->data_bytes = mess_len + HEADERSIZE + KEY_SIZE;
 
     data pdu = calloc(1, PDU_struct->data_bytes);
+
+    nread = 0;
     while(nread<PDU_struct->data_bytes){
         nread=recv(sock,pdu,PDU_struct->data_bytes,0);
         if(nread==-1) {
@@ -75,7 +114,8 @@ PDU_struct *read_INSERT(int sock) {
     }
 
     PDU_struct->data = pdu;
-    //free(header);
+    header--;
+    free(header);
     return PDU_struct;
 
 }
@@ -121,19 +161,20 @@ PDU_struct *read_exactly_from_kernel(struct nlmsghdr *nlh){
     PDU_struct *pdu = calloc(1, sizeof(PDU_struct));
 
     data response_buffer = NLMSG_DATA(nlh);
-    //uint8_t error;
-    //uint16_t data_bytes;
+    data head = response_buffer;
+    uint16_t msg_size = 0;
+    data message = NULL;
 
     memcpy(&pdu->OP_code,response_buffer, 1);
     response_buffer+=1;
-    memcpy(&pdu->data_bytes,response_buffer, 2);
+    memcpy(&msg_size,response_buffer, 2);
     response_buffer+=3;
-    pdu->data = malloc(pdu->data_bytes);
-    memcpy(pdu->data, response_buffer, pdu->data_bytes);
-
-    //printf("Received message error: %u\n", pdu->OP_code);
+    pdu->data = calloc(1, msg_size + HEADERSIZE);
+    memcpy(pdu->data, head, msg_size + HEADERSIZE);
+    pdu->data_bytes = msg_size + HEADERSIZE;
+    //printf("Received message opcode: %u\n", pdu->OP_code);
     //printf("Received message data_bytes: %u\n", pdu->data_bytes);
-    printf("Received message data: %s\n", (char*)pdu->data);
+    //printf("Received message data: %s\n", (char*)pdu->data);
     return pdu;
 }
 

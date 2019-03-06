@@ -39,7 +39,6 @@ void timeout_handler (int signum);
 int getFQDN(char *fqdn, size_t n);
 
 PDU_struct *receive_pdu(int sock);
-
 int createsocket_client(sock_init_struct *si);
 int createsocket_server(sock_init_struct *sis);
 

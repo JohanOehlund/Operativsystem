@@ -16,7 +16,8 @@ static void recieve_data(struct sk_buff *skb) {
     data response_buffer = PDU_to_buffer_kernel(response);
 
     pid = nlh_kernel->nlmsg_pid; //pid of sending process
-    msg_size=(response->data_bytes)+KERNEL_HEADERSIZE;
+    msg_size=(response->data_bytes)+HEADERSIZE;
+    printk(KERN_ERR "FMsgsize: %u \n", msg_size);
 
     skb_out = nlmsg_new(msg_size,0);
     if(!skb_out){
@@ -75,8 +76,9 @@ static PDU_struct *read_exactly_from_user(data request){
 static data PDU_to_buffer_kernel(PDU_struct *pdu){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     printk(KERN_INFO "opcode kernel: %u\n", pdu->OP_code);
+    printk(KERN_INFO "data_bytes kernel: %u\n", pdu->data_bytes);
     printk(KERN_INFO "data kernel: %s\n", (char*)pdu->data);
-    data response_buffer = kmalloc(((pdu->data_bytes)+KERNEL_HEADERSIZE), GFP_KERNEL);
+    data response_buffer = kmalloc(((pdu->data_bytes)+HEADERSIZE), GFP_KERNEL);
     data head = response_buffer;
     memcpy(response_buffer, &pdu->OP_code, 1);
     response_buffer++;
@@ -98,7 +100,7 @@ static void read_DELETE_struct(PDU_struct *response, data request){
     obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
-        response->OP_code = DELETE;
+        response->OP_code = KERNEL;
         response->data = "Error when getting object.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
         return;
@@ -107,12 +109,12 @@ static void read_DELETE_struct(PDU_struct *response, data request){
     int err = rhashtable_remove_fast(&ht, &obj->node, test_rht_params);
     if(err < 0){
         printk(KERN_ALERT "Error when deleting from rhashtable: %d\n", err);
-        response->OP_code = DELETE;
+        response->OP_code = KERNEL;
         response->data = "Error when deleting from rhashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Successful deleting object from rhashtable.");
-        response->OP_code = DELETE;
+        response->OP_code = KERNEL;
         response->data = "Successful deleting object from rhashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
@@ -133,7 +135,7 @@ static void read_GET_struct(PDU_struct *response, data request){
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj_get == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
-        response->OP_code = GET;
+        response->OP_code = KERNEL;
         response->data = "Error when getting object.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
         return;
@@ -141,12 +143,12 @@ static void read_GET_struct(PDU_struct *response, data request){
 
     if (memcmp(&obj_get->key, &key, KEY_SIZE) == 0) {
         printk(KERN_INFO "Key matches.\n");
-        response->OP_code = GET;
+        response->OP_code = KERNEL;
         response->data = obj_get->data;
         response->data_bytes = strnlen((char*)response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Key does not match...\n");
-        response->OP_code = GET;
+        response->OP_code = KERNEL;
         response->data = "Key does not match...";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
@@ -158,7 +160,7 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     struct test_obj *obj = kmalloc(sizeof(struct test_obj),GFP_KERNEL);
     if (!obj) {
         printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
-        response->OP_code = INSERT;
+        response->OP_code = KERNEL;
         response->data = "Error when kmalloc.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
         return NULL;
@@ -179,17 +181,17 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     int err = rhashtable_lookup_insert_fast(&ht, &obj->node, test_rht_params);
     if(err == -EEXIST){
         printk(KERN_ALERT "Error, duplicated key.\n");
-        response->OP_code = INSERT;
+        response->OP_code = KERNEL;
         response->data = "Error, duplicated key.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else if(err < 0){
         printk(KERN_ALERT "Error when insert to rhashtable: %d\n", errno);
-        response->OP_code = INSERT;
+        response->OP_code = KERNEL;
         response->data = "Error when insert to rhashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Inserted object to rhashtable");
-        response->OP_code = INSERT;
+        response->OP_code = KERNEL;
         response->data = "Inserted object to rhashtable";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
@@ -203,12 +205,12 @@ static void read_INIT_struct(PDU_struct *response, data data){
     int err = rhashtable_init(&ht, &test_rht_params);
     if (err < 0) {
         printk(KERN_ALERT "Unable to initialize hashtable: %d\n", err);
-        response->OP_code = INIT;
+        response->OP_code = KERNEL;
         response->data = "Unable to initialize hashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
         printk(KERN_INFO "Initialized hashtable: %d\n", err);
-        response->OP_code = INIT;
+        response->OP_code = KERNEL;
         response->data = "Initialized hashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }

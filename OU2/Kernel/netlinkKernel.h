@@ -55,6 +55,7 @@ static void __exit exit(void);
 struct test_obj {
 	char key[KEY_SIZE];
 	struct rhash_head node;
+	//u16 data_bytes;
 	void *data;
 };
 

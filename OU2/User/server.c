@@ -110,17 +110,13 @@ void *clientlistener(void *arg){
     PDU_struct *PDU_struct = NULL;
 
 
+
     while(1){
 
         usleep(1000000);
         reset_netlink();
         PDU_struct = receive_pdu(temp_socket);
 
-        /*data t1 = calloc(1,HEADERSIZE);
-        memset(t1, INIT, 1);
-
-        printf("OP in clientlistener: %u\n", PDU_struct->OP_code);
-        printf("Numbytes: %zu\n", PDU_struct->numbytes);*/
         memcpy(NLMSG_DATA(nlh_user), PDU_struct->data, PDU_struct->data_bytes);
 
         printf("Sending message to kernel\n");
@@ -130,11 +126,19 @@ void *clientlistener(void *arg){
         recvmsg(sock_fd, &msg, 0);
 
         pdu = read_exactly_from_kernel(nlh_user);
+        printf("Received message opcode: %u\n", pdu->OP_code);
+        printf("Received message data_bytes: %u\n", pdu->data_bytes);
+        //printf("Received message message: %s\n", (char*)pdu->data);
+        //pdu->data = calloc(1, HEADERSIZE);
+        //memset(pdu->data, INIT, 1);
 
 
         /*data temp_data = calloc(1,30);
         memcpy(temp_data, pdu, 30);
         printf("temp_data: %s\n", temp_data);*/
+
+
+
         send_pdu(temp_socket, pdu);
     }
 

@@ -13,11 +13,10 @@ typedef void* data;
 #define INSERT 12
 #define GET 13
 #define DELETE 14
+#define KERNEL 15
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 #define KEY_SIZE 64
-
-#define KERNEL_HEADERSIZE 5
 
 
 typedef struct PDU_struct {
