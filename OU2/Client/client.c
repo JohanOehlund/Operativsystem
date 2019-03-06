@@ -78,9 +78,9 @@ int main(int argc, char **argv){
         free(PDU_struct->data);
         free(PDU_struct);*/
         PDU_struct_recieve = receive_pdu(client_server);
-        printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
-        printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
-        printf("data i return: %s\n", (char*)PDU_struct_recieve->data);
+        //printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
+        //printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
+        printf("\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
 
 
         free_struct(USER,PDU_struct_send);

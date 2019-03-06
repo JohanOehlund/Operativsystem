@@ -95,8 +95,8 @@ static void read_DELETE_struct(PDU_struct *response, data request){
     request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
-    //struct test_obj *obj_get;
-    struct test_obj *obj;
+    //struct rhash_object *obj_get;
+    struct rhash_object *obj;
     obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
@@ -130,8 +130,8 @@ static void read_GET_struct(PDU_struct *response, data request){
     request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
-    //struct test_obj *obj_get;
-    struct test_obj *obj_get;
+    //struct rhash_object *obj_get;
+    struct rhash_object *obj_get;
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj_get == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
@@ -157,7 +157,7 @@ static void read_GET_struct(PDU_struct *response, data request){
 
 static void read_INSERT_struct(PDU_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    struct test_obj *obj = kmalloc(sizeof(struct test_obj),GFP_KERNEL);
+    struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
         printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
         response->OP_code = KERNEL;
@@ -166,16 +166,15 @@ static void read_INSERT_struct(PDU_struct *response, data request){
         return NULL;
     }
 
-    u16 data_bytes;
     request++;
-    memcpy(&data_bytes, request, 2);
-    printk(KERN_INFO "obj->data_bytes: %u\n", data_bytes);
+    memcpy(&obj->data_bytes, request, 2);
+    printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
     memcpy(obj->key, request, KEY_SIZE);
     printk(KERN_INFO "obj->key: %s\n", (char*)obj->key);
     request+=KEY_SIZE;
-    obj->data = kmalloc(data_bytes,GFP_KERNEL);
-    memcpy(obj->data, request, (data_bytes));
+    obj->data = kmalloc(obj->data_bytes,GFP_KERNEL);
+    memcpy(obj->data, request, (obj->data_bytes));
     printk(KERN_INFO "obj->data: %s\n", (char*)obj->data);
 
     int err = rhashtable_lookup_insert_fast(&ht, &obj->node, test_rht_params);

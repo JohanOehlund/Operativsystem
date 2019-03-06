@@ -45,7 +45,6 @@ PDU_struct *read_KERNEL(int sock) {
     uint16_t msg_size = 0;
     header++;
     memcpy(&msg_size, header, 2);
-    printf("msg_size: %u\n", msg_size);
     PDU_struct->data = calloc(1,msg_size + sizeof(data));
     nread = 0;
     while(nread<msg_size){

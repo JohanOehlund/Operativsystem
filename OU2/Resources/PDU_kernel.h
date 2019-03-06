@@ -33,7 +33,7 @@ typedef struct INIT_struct {
 typedef struct INSERT_struct {
     u8 OP_code;
     char key[KEY_SIZE];
-    u32 data_bytes;
+    u16 data_bytes;
     data data;
 
 }INSERT_struct;

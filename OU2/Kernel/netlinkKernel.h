@@ -52,17 +52,17 @@ static void __exit exit(void);
 
 
 
-struct test_obj {
+struct rhash_object {
 	char key[KEY_SIZE];
 	struct rhash_head node;
-	//u16 data_bytes;
+	u16 data_bytes;
 	void *data;
 };
 
 static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = HT_SIZE,
-	.head_offset = offsetof(struct test_obj, node),
-	.key_offset = offsetof(struct test_obj, key),
+	.head_offset = offsetof(struct rhash_object, node),
+	.key_offset = offsetof(struct rhash_object, key),
 	.key_len = KEY_SIZE,
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
