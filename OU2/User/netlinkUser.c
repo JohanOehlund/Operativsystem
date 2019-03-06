@@ -59,7 +59,7 @@ void delete_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(delete_struct);
     free(action);
@@ -83,7 +83,7 @@ void get_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(get_struct);
     free(action);
@@ -109,7 +109,7 @@ void insert_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(insert_struct->data);
     free(insert_struct);
@@ -134,7 +134,7 @@ void init_rhashtable() {
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct *pdu = read_exactly_from_kernel(nlh_user);
 
     free(init_struct);
     free(action);

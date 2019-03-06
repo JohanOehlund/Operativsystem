@@ -34,17 +34,17 @@ int msg_size;
 
 static void recieve_data(struct sk_buff *skb);
 
-static PDU_kernel_struct *read_exactly_from_user(data data);
+static PDU_struct *read_exactly_from_user(data data);
 
-static data PDU_to_buffer_kernel(PDU_kernel_struct *pdu);
+static data PDU_to_buffer_kernel(PDU_struct *pdu);
 
-static void read_DELETE_struct(PDU_kernel_struct *response, data request);
+static void read_DELETE_struct(PDU_struct *response, data request);
 
-static void read_INSERT_struct(PDU_kernel_struct *response, data data);
+static void read_INSERT_struct(PDU_struct *response, data data);
 
-static void read_INIT_struct(PDU_kernel_struct *response, data data);
+static void read_INIT_struct(PDU_struct *response, data data);
 
-static void read_GET_struct(PDU_kernel_struct *response, data request);
+static void read_GET_struct(PDU_struct *response, data request);
 
 static int __init init(void);
 

@@ -20,12 +20,11 @@ typedef void* data;
 #define KERNEL_HEADERSIZE 5
 
 
-//Kernel space struct.
-typedef struct PDU_kernel_struct {
-    u8 error;
-    u32 data_bytes;
-    data data;
-}PDU_kernel_struct;
+typedef struct PDU_struct {
+	uint8_t OP_code;
+	uint16_t data_bytes;
+	data data;
+}PDU_struct;
 
 //User space structs...
 typedef struct INIT_struct {

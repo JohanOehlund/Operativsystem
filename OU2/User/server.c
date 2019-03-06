@@ -106,19 +106,22 @@ void *clientlistener(void *arg){
 
     clientThreadInfo *cti = (clientThreadInfo *)arg;
     int temp_socket = cti->client_sock;
+    PDU_struct *pdu = NULL;
+    PDU_struct *PDU_struct = NULL;
+
 
     while(1){
 
         usleep(1000000);
         reset_netlink();
-        PDU_struct *PDU_struct = receive_pdu(temp_socket);
+        PDU_struct = receive_pdu(temp_socket);
 
         /*data t1 = calloc(1,HEADERSIZE);
         memset(t1, INIT, 1);
 
         printf("OP in clientlistener: %u\n", PDU_struct->OP_code);
         printf("Numbytes: %zu\n", PDU_struct->numbytes);*/
-        memcpy(NLMSG_DATA(nlh_user), PDU_struct->pdu, PDU_struct->numbytes);
+        memcpy(NLMSG_DATA(nlh_user), PDU_struct->data, PDU_struct->data_bytes);
 
         printf("Sending message to kernel\n");
         sendmsg(sock_fd,&msg,0);
@@ -126,13 +129,13 @@ void *clientlistener(void *arg){
         printf("Waiting for message from kernel\n");
         recvmsg(sock_fd, &msg, 0);
 
-        PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
+        pdu = read_exactly_from_kernel(nlh_user);
 
 
         /*data temp_data = calloc(1,30);
         memcpy(temp_data, pdu, 30);
         printf("temp_data: %s\n", temp_data);*/
-
+        send_pdu(temp_socket, pdu);
     }
 
     llist_insertfirst(terminatedThreads, &cti->thread_num);
@@ -255,7 +258,7 @@ void delete_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(delete_struct);
     free(action);
@@ -279,7 +282,7 @@ void get_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(get_struct);
     free(action);
@@ -305,7 +308,7 @@ void insert_rhashtable(char* key){
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct * pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
 
     free(insert_struct->data);
     free(insert_struct);
@@ -330,7 +333,7 @@ void init_rhashtable() {
     //printf("Waiting for message from kernel\n");
     recvmsg(sock_fd, &msg, 0);
 
-    PDU_kernel_struct *pdu = read_exactly_from_kernel(nlh_user);
+    PDU_struct *pdu = read_exactly_from_kernel(nlh_user);
 
     free(init_struct);
     free(action);

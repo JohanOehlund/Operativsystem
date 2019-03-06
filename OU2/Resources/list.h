@@ -13,8 +13,8 @@ int NRTHR;
 
 typedef struct PDU_struct {
 	uint8_t OP_code;
-	size_t numbytes;
-	data pdu;
+	uint16_t data_bytes;
+	data data;
 }PDU_struct;
 
 typedef struct node {

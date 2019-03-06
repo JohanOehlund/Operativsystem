@@ -119,7 +119,7 @@ int createsocket_client(sock_init_struct *sis) {
 
 int send_pdu(int sock, PDU_struct *pdu){
 
-    if(send(sock,pdu->pdu,pdu->numbytes,MSG_NOSIGNAL)==-1){
+    if(send(sock,pdu->data,pdu->data_bytes,MSG_NOSIGNAL)==-1){
         perror("send");
         return -1;
     }

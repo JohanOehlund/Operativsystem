@@ -11,8 +11,6 @@ int setupConnection(char **argv);
 
 int connectCS(sock_init_struct *sis,char *clientname);
 
-PDU_struct *setupJOINPDU(char *clientname);
-
 PDU_struct *create_GET_to_server(char* key);
 
 PDU_struct *create_message_to_server(char *input);

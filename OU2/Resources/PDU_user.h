@@ -33,11 +33,11 @@ typedef void* data;
 #define MAXMESSLEN 50
 
 //Kernel space struct.
-typedef struct PDU_kernel_struct {
+/*typedef struct PDU_kernel_struct {
     uint8_t error;
     uint16_t data_bytes;
     data data;
-}PDU_kernel_struct;
+}PDU_kernel_struct;*/
 
 //User space structs...
 typedef struct INIT_struct {
@@ -67,7 +67,7 @@ typedef struct DELETE_struct {
 
 PDU_struct *read_exactly(int sock, uint8_t OP_code);
 
-PDU_kernel_struct *read_exactly_from_kernel(struct nlmsghdr *nlh);
+PDU_struct *read_exactly_from_kernel(struct nlmsghdr *nlh);
 
 data PDU_to_buffer_user(uint8_t OP_code, data pdu);
 
