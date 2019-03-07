@@ -9,7 +9,11 @@
 
 int setupConnection(char **argv);
 
-int connectCS(sock_init_struct *sis,char *clientname);
+int connectCS(sock_init_struct *sis, char *clientname);
+
+PDU_struct *create_QUIT_to_server();
+
+PDU_struct *setupJOINPDU(char *clientname);
 
 PDU_struct *create_GET_to_server(char* key);
 

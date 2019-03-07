@@ -132,6 +132,7 @@ PDU_struct *receive_pdu(int sock) {
     PDU_struct *PDU_struct;
     while(nread<HEADERSIZE){
         nread=recv(sock,buffer_read,HEADERSIZE,MSG_PEEK);
+        printf("nread receive_pdu %zu\n", nread);
         //sleep(3);
         if(nread == 0){
             return (void *)-100;
@@ -141,7 +142,7 @@ PDU_struct *receive_pdu(int sock) {
 
 
     }
-    
+
     PDU_struct = read_exactly(sock, (uint8_t)buffer_read[0]);
 
     return PDU_struct;

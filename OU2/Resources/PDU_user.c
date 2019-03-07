@@ -23,11 +23,87 @@ PDU_struct *read_exactly(int sock, uint8_t OP_code){
         case KERNEL:
             PDU_struct = read_KERNEL(sock);
             break;
+        case JOIN:
+            PDU_struct = read_JOIN(sock);
+            break;
+        case QUIT:
+            PDU_struct = read_QUIT(sock);
+            break;
         default:
             fprintf(stderr,"INVALID OP-code read_exactly: %u\n", OP_code);
             return NULL;
     }
     return PDU_struct;
+}
+
+PDU_struct *read_QUIT(int sock){
+    printf("IN read_DELETE\n");
+    size_t nread = 0;
+
+
+    data header = calloc(1, HEADERSIZE);
+    while(nread<HEADERSIZE){
+        nread=recv(sock,header,HEADERSIZE,0);
+        if(nread==-1) {
+            continue;
+        }
+    }
+
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
+    QUIT_struct *delete_struct = calloc(1, sizeof(QUIT_struct));
+
+
+    delete_struct->OP_code = JOIN;
+    delete_struct->sock = sock;
+
+    PDU_struct->OP_code = QUIT;
+    PDU_struct->data = delete_struct;
+    return PDU_struct;
+
+}
+
+PDU_struct *read_JOIN(int sock){
+    printf("IN read_JOIN\n");
+    size_t nread = 0;
+
+
+    data header = calloc(1, HEADERSIZE);
+    while(nread<HEADERSIZE){
+        nread=recv(sock,header,HEADERSIZE,0);
+        if(nread==-1) {
+            continue;
+        }
+    }
+
+    PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
+    JOIN_struct *join_struct = calloc(1, sizeof(JOIN_struct));
+
+
+    uint16_t name_len;
+    header++;
+    memcpy(&name_len, header, 2);
+    PDU_struct->data_bytes = name_len;
+    printf("client name len: %u\n", name_len);
+    join_struct->client_ID = calloc(1, PDU_struct->data_bytes);
+
+    nread = 0;
+    while(nread < PDU_struct->data_bytes){
+        nread=recv(sock,join_struct->client_ID,PDU_struct->data_bytes,0);
+        printf("nread: %zu\n", nread);
+        if(nread==-1) {
+            continue;
+        }
+    }
+
+    join_struct->OP_code = JOIN;
+    join_struct->ID_len = name_len;
+
+    PDU_struct->OP_code = JOIN;
+    PDU_struct->data = join_struct;
+    header--;
+    free(header);
+    return PDU_struct;
+
 }
 
 PDU_struct *read_KERNEL(int sock) {

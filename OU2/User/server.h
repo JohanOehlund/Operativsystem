@@ -28,12 +28,12 @@ int *findFreeThread();
 
 void printWrongParams(char *progName);
 
+void closeConnectedClient(int client_sock, int cliC);
 
 
+void *sendToClients(void *arg);
 
-
-
-
+PDU_struct *clientJOIN(int client_sock);
 
 
 

@@ -64,6 +64,9 @@ int main(int argc, char **argv){
                 break;
             case 5:
                 printf("Closing program\n");
+                PDU_struct_send = create_QUIT_to_server();
+                send_pdu(client_server, PDU_struct_send);
+                free_struct(USER,PDU_struct_send);
                 return 0;
                 break;
             case 6:
@@ -144,7 +147,18 @@ void TEST_INT_INSERT(int sock){
         free_struct(KERNEL,PDU_struct_recieve2);
     }
 
+}
 
+PDU_struct *create_QUIT_to_server() {
+    printf("QUIT\n");
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+    PDU_struct->OP_code = USER;
+    PDU_struct->data_bytes = HEADERSIZE;
+
+    data data = calloc(1,HEADERSIZE);
+    memset(data , QUIT, 1);
+    PDU_struct->data = data;
+    return PDU_struct;
 }
 
 PDU_struct *create_INIT_to_server(){
@@ -225,26 +239,51 @@ PDU_struct *create_DELETE_to_server(char* key) {
 * @param   clientname -  The clients name (input argument to program).
 * @return pdu - The created messagePDU.
 */
-int connectCS(sock_init_struct *sis,char *clientname){
+int connectCS(sock_init_struct *sis, char *clientname){
 
-    //PDU_struct *pdu=setupJOINPDU(clientname);
+    PDU_struct *pdu=setupJOINPDU(clientname);
     int server_client=createsocket_client(sis);
 
 
-    /*if((send_pdu(server_client,pdu)==-1)){
-    fprintf(stderr,"Could not send to server\n");
+    if((send_pdu(server_client,pdu)==-1)){
+        fprintf(stderr,"Could not send to server\n");
+        free(pdu->data);
+        free(pdu);
+        return -1;
+    }
     free(pdu->data);
     free(pdu);
-    return -1;
-}*/
-//free(pdu->data);
-//free(pdu);
-return server_client;
+    return server_client;
 }
 
 
 
 
+/* Creates a JOIN-PDU to server.
+ * @param    clientname -  The clients name (input argument to program).
+ * @return pdu - The created JOIN-PDU.
+ */
+PDU_struct *setupJOINPDU(char *clientname){
+
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+    PDU_struct->OP_code = USER;
+    PDU_struct->data_bytes = HEADERSIZE + strnlen(clientname,MAXMESSLEN)+1;
+
+    uint16_t client_len = (uint16_t)strnlen(clientname,MAXMESSLEN)+1;
+    printf("client_len %u\n", client_len);
+    printf("client name: %s\n", clientname);
+    size_t data_size = HEADERSIZE + strnlen(clientname,MAXMESSLEN)+1;
+
+    data data = calloc(1,data_size);
+    memset(data , JOIN, 1);
+    data++;
+    memcpy(data , &client_len, 2);
+    data+=3;
+    memcpy(data , clientname, client_len);
+    data-=4;
+    PDU_struct->data = data;
+    return PDU_struct;
+}
 
 
 

@@ -56,7 +56,7 @@ struct rhash_object {
 	char key[KEY_SIZE];
 	struct rhash_head node;
 	u16 data_bytes;
-	void *data;
+	data data;
 };
 
 static const struct rhashtable_params test_rht_params = {

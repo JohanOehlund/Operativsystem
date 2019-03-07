@@ -131,7 +131,7 @@ static void read_GET_struct(PDU_struct *response, data request){
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
-    struct rhash_object *obj_get;
+    struct rhash_object *obj_get = NULL;
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj_get == NULL){
         printk(KERN_ALERT "Error when getting object.\n");
