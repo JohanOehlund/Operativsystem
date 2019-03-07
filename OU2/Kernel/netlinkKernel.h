@@ -50,6 +50,8 @@ static int __init init(void);
 
 static void __exit exit(void);
 
+int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj);
+
 
 
 struct rhash_object {
@@ -63,10 +65,14 @@ static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = HT_SIZE,
 	.head_offset = offsetof(struct rhash_object, node),
 	.key_offset = offsetof(struct rhash_object, key),
-	.key_len = KEY_SIZE,
+	.key_len = sizeof(char)*KEY_SIZE,
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
+	.obj_cmpfn = my_compare_function,
 };
+
+typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
+	         const void *obj);
 
 
 module_init(init);

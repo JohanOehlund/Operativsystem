@@ -83,13 +83,11 @@ PDU_struct *read_JOIN(int sock){
     header++;
     memcpy(&name_len, header, 2);
     PDU_struct->data_bytes = name_len;
-    printf("client name len: %u\n", name_len);
     join_struct->client_ID = calloc(1, PDU_struct->data_bytes);
 
     nread = 0;
     while(nread < PDU_struct->data_bytes){
         nread=recv(sock,join_struct->client_ID,PDU_struct->data_bytes,0);
-        printf("nread: %zu\n", nread);
         if(nread==-1) {
             continue;
         }
@@ -302,6 +300,8 @@ data create_GET_buffer(data pdu){
     memset(response_buffer, GET, 1);
     response_buffer+=HEADERSIZE;
     memcpy(response_buffer, get_struct->key, KEY_SIZE);
+    printf("KEY i PDU:user get: %s\n", get_struct->key);
+
 
     return head;
 }
@@ -317,7 +317,6 @@ data create_INSERT_buffer(data pdu){
     INSERT_struct *insert_struct = (INSERT_struct*) pdu;
     size_t response_buffer_size = (insert_struct->data_bytes)+HEADERSIZE + KEY_SIZE;
 
-    printf("response_buffer_size %zu\n",response_buffer_size);
     data response_buffer = calloc(1, response_buffer_size);
 
     data head = response_buffer;
@@ -325,7 +324,9 @@ data create_INSERT_buffer(data pdu){
     response_buffer++;
     memcpy(response_buffer, &insert_struct->data_bytes, 2);
     response_buffer+=3;
-    memcpy(response_buffer, &insert_struct->key, KEY_SIZE);
+    memcpy(response_buffer, insert_struct->key, KEY_SIZE);
+    printf("KEY i PDU:user insert: %s\n", insert_struct->key);
+
     response_buffer+=KEY_SIZE;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);

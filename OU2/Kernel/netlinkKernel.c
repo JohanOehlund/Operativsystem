@@ -89,10 +89,12 @@ static data PDU_to_buffer_kernel(PDU_struct *pdu){
 }
 
 static void read_DELETE_struct(PDU_struct *response, data request){
+    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
-    char key[KEY_SIZE];
+    //char key[KEY_SIZE];
     request+=HEADERSIZE;
+    memset(key,0,KEY_SIZE);
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
@@ -124,11 +126,13 @@ static void read_DELETE_struct(PDU_struct *response, data request){
 }
 
 static void read_GET_struct(PDU_struct *response, data request){
+    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
-    char key[KEY_SIZE];
+
     request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
+    //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
     struct rhash_object *obj_get = NULL;
@@ -141,7 +145,7 @@ static void read_GET_struct(PDU_struct *response, data request){
         return;
     }
 
-    if (memcmp(&obj_get->key, &key, KEY_SIZE) == 0) {
+    if (memcmp(obj_get->key, key, KEY_SIZE) == 0){
         printk(KERN_INFO "Key matches.\n");
         response->OP_code = KERNEL;
         response->data = obj_get->data;
@@ -156,6 +160,7 @@ static void read_GET_struct(PDU_struct *response, data request){
 }
 
 static void read_INSERT_struct(PDU_struct *response, data request){
+    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
@@ -171,7 +176,8 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
     memcpy(obj->key, request, KEY_SIZE);
-    printk(KERN_INFO "obj->key: %s\n", (char*)obj->key);
+    //obj->key = 1337;
+    printk(KERN_INFO "obj->key: %s\n", obj->key);
     request+=KEY_SIZE;
     obj->data = kmalloc(obj->data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (obj->data_bytes));
@@ -215,7 +221,10 @@ static void read_INIT_struct(PDU_struct *response, data data){
     }
 
 }
+int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
 
+    return memcmp(arg->key, obj, KEY_SIZE);
+}
 
 static int __init init(void) {
     printk("Entering: %s\n",__FUNCTION__);

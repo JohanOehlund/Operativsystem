@@ -17,13 +17,13 @@ int main(int argc, char **argv){
         printWrongParams(argv[0]);
         return EXIT_FAILURE;
     }
-    setup_netlink();
     clients_sockets=llist_empty();
     sender_list=llist_empty();
     client_ids=llist_empty();
     availableThreads = llist_empty();
     terminatedThreads = llist_empty();
     pthread_t trd[5];
+    setup_netlink();
 
     closeAllClients = false;
     exitServer=false;
@@ -115,8 +115,6 @@ void *acceptConnections(void *arg) {
     }
     while(1){
         temp2 = accept(sock,0, 0);
-        printf("SOMEONE CONNECTED!\n");
-        printf("CLIENT GOT SOCKET: %d\n", temp2);
         int *client_sock = calloc(1, sizeof(int *));
         memcpy(client_sock, &temp2, sizeof(int));
 
@@ -169,18 +167,17 @@ void *clientlistener(void *arg){
     clientThreadInfo *cti = (clientThreadInfo *)arg;
     int temp_socket = cti->client_sock;
 
-    printf("cti->client_sock: %d\n", temp_socket);
     bool exitLoop=false;
     PDU_struct *pdu_JOIN = NULL;
     pdu_JOIN = clientJOIN(temp_socket);
     JOIN_struct *join_struct = (JOIN_struct*) pdu_JOIN->data;
     printf("Received JOIN from user: %s\n", join_struct->client_ID);
 
+
     while(1) {
 
         PDU_struct *PDU_struct_SEND = NULL;
         PDU_struct *PDU_struct_RECEIVE = NULL;
-        printf("HELLo!\n");
         /*if(llist_isEmpty(clients_sockets)){
             llist_position p3=llist_first(client_ids);
             for (int j = 0; j < list_length(client_ids) ; ++j) {
@@ -205,8 +202,8 @@ void *clientlistener(void *arg){
         recvmsg(sock_fd, &msg, 0);
 
         PDU_struct_RECEIVE = read_exactly_from_kernel(nlh_user);
-        printf("Received message opcode: %u\n", PDU_struct_RECEIVE->OP_code);
-        printf("Received message data_bytes: %u\n", PDU_struct_RECEIVE->data_bytes);
+        //printf("Received message opcode: %u\n", PDU_struct_RECEIVE->OP_code);
+        //printf("Received message data_bytes: %u\n", PDU_struct_RECEIVE->data_bytes);
         send_pdu(temp_socket, PDU_struct_RECEIVE);
 
         free_struct(KERNEL, PDU_struct_RECEIVE);
