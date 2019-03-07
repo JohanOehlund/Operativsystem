@@ -37,7 +37,6 @@ PDU_struct *read_exactly(int sock, uint8_t OP_code){
 }
 
 PDU_struct *read_QUIT(int sock){
-    printf("IN read_DELETE\n");
     size_t nread = 0;
 
 
@@ -63,7 +62,6 @@ PDU_struct *read_QUIT(int sock){
 }
 
 PDU_struct *read_JOIN(int sock){
-    printf("IN read_JOIN\n");
     size_t nread = 0;
 
 
@@ -300,8 +298,6 @@ data create_GET_buffer(data pdu){
     memset(response_buffer, GET, 1);
     response_buffer+=HEADERSIZE;
     memcpy(response_buffer, get_struct->key, KEY_SIZE);
-    printf("KEY i PDU:user get: %s\n", get_struct->key);
-
 
     return head;
 }

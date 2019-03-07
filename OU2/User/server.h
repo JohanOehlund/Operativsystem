@@ -35,6 +35,14 @@ void *sendToClients(void *arg);
 
 PDU_struct *clientJOIN(int client_sock);
 
+void closeServer();
+
+void *serverWrite(void *arg);
+
+void *joinThreads(void *arg);
+
+
+
 
 
 

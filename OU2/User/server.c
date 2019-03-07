@@ -23,6 +23,8 @@ int main(int argc, char **argv){
     availableThreads = llist_empty();
     terminatedThreads = llist_empty();
     pthread_t trd[5];
+    closeAllClients = false;
+    exitServer=false;
     setup_netlink();
 
     closeAllClients = false;
@@ -32,27 +34,130 @@ int main(int argc, char **argv){
         return 1;
     }
 
-    if(pthread_create(&trd[0], NULL, acceptConnections, (void*)argv)!=0){
+    if(pthread_create(&trd[0], NULL, joinThreads, NULL)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-
     if(pthread_create(&trd[1], NULL, sendToClients, (void*)argv)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
+    if(pthread_create(&trd[2], NULL, serverWrite, NULL)!=0){
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_create(&trd[3], NULL, acceptConnections, (void*)argv)!=0){
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
 
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 3; ++i) {
+        printf("join trd %d\n", i);
         if(pthread_join(trd[i],NULL) != 0) {
             perror("thread join");
             exit(EXIT_FAILURE);
         }
     }
+    if(pthread_cancel(trd[3])<0){
+        perror("pthread_cancel");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_join(trd[3],NULL) != 0) {
+        perror("thread join");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_mutex_destroy(&lock)!=0){
+        perror("mutex destroy failed");
+        return 1;
+    }
+    llist_free(clients_sockets);
+    llist_free(client_ids);
+    llist_free(availableThreads);
+    llist_free(terminatedThreads);
+    llist_free(sender_list);
+
+
+
 
 
     //test_rhashtable((void*)0);
     return 0;
 }
+
+void closeServer() {
+    closeAllClients = true;
+    while(list_length(availableThreads)<THREADS){
+        pthread_mutex_lock(&availableThreads->mtx);
+        pthread_cond_wait(&availableThreads->cond,&availableThreads->mtx);
+        pthread_mutex_unlock(&availableThreads->mtx);
+    }
+    /*while(list_length(availableThreads)<THREADS){
+        usleep(2000);
+    }*/
+    printf("Joined all client threads.\n");
+    exitServer=true;
+    pthread_cond_broadcast(&sender_list->cond);
+    pthread_cond_broadcast(&terminatedThreads->cond);
+    pthread_mutex_unlock(&terminatedThreads->mtx);
+}
+
+
+/* Joins client threads that have left the server(terminated).
+ * @param    arg -  The created socket to server.
+ * @return NULL
+ * @comment Shuts down connection and socket if received QUIT or client leaves server.
+ */
+void *joinThreads(void *arg) {
+    int *temp=NULL;
+
+    while(1) {
+
+        if(llist_isEmpty(terminatedThreads)) {
+            pthread_mutex_lock(&terminatedThreads->mtx);
+            pthread_cond_wait(&terminatedThreads->cond, &terminatedThreads->mtx);
+            pthread_mutex_unlock(&terminatedThreads->mtx);
+            if(exitServer)
+                break;
+        }
+        int *thread_number = calloc(1, sizeof(int *));
+        temp = llist_removefirst_INT(terminatedThreads);
+        memcpy(&thread_number, &temp, sizeof(int *));
+        printf("joining thread %d\n", *temp);
+        if(pthread_join(clientThreads[*temp],NULL) != 0) {
+            perror("thread join");
+            exit(EXIT_FAILURE);
+        }
+        llist_insertlast(availableThreads, thread_number);
+
+    }
+    return NULL;
+}
+
+
+/* Takes input from user from stdin.
+ *  gets a new checksum.
+ * @param   arg -
+ * @return
+ * @comment Type EXIT to close server.
+ */
+void *serverWrite(void *arg) {
+    printf("To close server type <%s>\n",EXIT);
+    while (1){
+        char message[MAXMESSLEN+1];
+        fgets(message,MAXMESSLEN,stdin);
+        if(strncmp(message, "\n", MAXMESSLEN)==0)
+            continue;
+        if(strncmp(message, EXIT, 4)==0) {
+            printf("Closing server.\n");
+            closeServer();
+            return NULL;
+        }
+
+        fflush(stdin);
+    }
+    return NULL;
+}
+
 
 
 /* Sends all PDU:s to all connected clients.
@@ -91,6 +196,21 @@ void *sendToClients(void *arg){
         free(pdu);
     }
     return NULL;
+}
+
+/* Create a struct that contains information to connecting client
+ * @param   argv -  input argument to program.
+ * @return  sock - The created socket.
+ */
+int setupListeningSocket(char **argv) {
+
+    sock_init_struct *sis = calloc(1, sizeof(sock_init_struct));
+    sis->isUDP=false;
+    sis->nexthost=NULL;
+    sis->nextportString=argv[1];
+    int sock = createsocket_server(sis);
+    free(sis);
+    return sock;
 }
 
 
@@ -149,6 +269,23 @@ void *acceptConnections(void *arg) {
 
     return NULL;
 }
+
+/* Look through list if there are any free threads available.
+ * @param
+ * @return int - The first free thread.
+ * @comment The list "availableThreads" do not contains threads, it contains the associated thread number.
+ */
+int *findFreeThread() {
+
+    if(llist_isEmpty(availableThreads)){
+        usleep(1000);
+        printf("Server is full, closing connection\n");
+        return (int *)-5;
+    }
+
+    return llist_removefirst_INT(availableThreads);
+}
+
 
 
 
@@ -216,25 +353,6 @@ void *clientlistener(void *arg){
     return NULL;
 }
 
-
-/* Creates a JOIN_struct of the newly connected client.
- * @param client_sock - The connected clients socket.
- * @return gen - The created JOIN_struct.
- */
-PDU_struct *clientJOIN(int client_sock){
-    PDU_struct *PDU_struct=NULL;
-    while(1){
-        printf("WAITING for JOINPDU\n");
-        usleep(1000);
-        PDU_struct = receive_pdu(client_sock);
-        if(PDU_struct==NULL)
-            continue;
-        break;
-    }
-
-    return PDU_struct;
-}
-
 /* Closes a connected client
  * @param client_sock - The socket to close connection with.
  * @param gen_struct - A struct that contains closing sockets name.
@@ -279,40 +397,23 @@ void closeConnectedClient(int client_sock, int cliC) {
 }
 
 
-
-/* Look through list if there are any free threads available.
- * @param
- * @return int - The first free thread.
- * @comment The list "availableThreads" do not contains threads, it contains the associated thread number.
+/* Creates a JOIN_struct of the newly connected client.
+ * @param client_sock - The connected clients socket.
+ * @return gen - The created JOIN_struct.
  */
-int *findFreeThread() {
-
-    if(llist_isEmpty(availableThreads)){
+PDU_struct *clientJOIN(int client_sock){
+    PDU_struct *PDU_struct=NULL;
+    while(1){
+        printf("WAITING for JOINPDU\n");
         usleep(1000);
-        printf("Server is full, closing connection\n");
-        return (int *)-5;
+        PDU_struct = receive_pdu(client_sock);
+        if(PDU_struct==NULL)
+            continue;
+        break;
     }
 
-    return llist_removefirst_INT(availableThreads);
+    return PDU_struct;
 }
-
-
-/* Create a struct that contains information to connecting client
- * @param   argv -  input argument to program.
- * @return  sock - The created socket.
- */
-int setupListeningSocket(char **argv) {
-
-    sock_init_struct *sis = calloc(1, sizeof(sock_init_struct));
-    sis->isUDP=false;
-    sis->nexthost=NULL;
-    sis->nextportString=argv[1];
-    int sock = createsocket_server(sis);
-    free(sis);
-    return sock;
-}
-
-
 
 void printWrongParams(char *progName) {
     fprintf(stderr,
