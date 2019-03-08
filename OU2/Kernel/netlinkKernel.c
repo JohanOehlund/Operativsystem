@@ -3,20 +3,22 @@
 //https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
 extern int errno = 0;
+//char key[KEY_SIZE];
 
 static void recieve_data(struct sk_buff *skb) {
 
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    nlh_kernel_receive=(struct nlmsghdr*)skb->data;
-    nlh_kernel_send=(struct nlmsghdr*)skb->data;
-    PDU_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel_receive));
+    nlh_kernel=(struct nlmsghdr*)skb->data;
+    PDU_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel));
     if(response == NULL){
         printk(KERN_ERR "Error while reading from user space\n");
         return NULL;
     }
     data response_buffer = PDU_to_buffer_kernel(response);
-    pid = nlh_kernel_receive->nlmsg_pid; //pid of sending process
+
+    pid = nlh_kernel->nlmsg_pid; //pid of sending process
     msg_size=(response->data_bytes)+HEADERSIZE;
+    printk(KERN_ERR "FMsgsize: %u \n", msg_size);
 
     skb_out = nlmsg_new(msg_size,0);
     if(!skb_out){
@@ -24,10 +26,11 @@ static void recieve_data(struct sk_buff *skb) {
         return;
     }
 
-    nlh_kernel_send=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
+
+    nlh_kernel=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
     NETLINK_CB(skb_out).dst_group = 0;
-    memcpy(nlmsg_data(nlh_kernel_send), response_buffer, msg_size);
-    int res=nlmsg_unicast(nlh_kernel_send,skb_out,pid);
+    memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
+    int res=nlmsg_unicast(nl_sk,skb_out,pid);
 
     if(res<0)
         printk(KERN_ERR "Error while sending bak to user\n");
@@ -87,12 +90,11 @@ static data PDU_to_buffer_kernel(PDU_struct *pdu){
 }
 
 static void read_DELETE_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    char key[KEY_SIZE];
 
     //char key[KEY_SIZE];
     request+=HEADERSIZE;
-    memset(key,0,KEY_SIZE);
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
@@ -124,13 +126,18 @@ static void read_DELETE_struct(PDU_struct *response, data request){
 }
 
 static void read_GET_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-
-
+    char key[KEY_SIZE];
     request+=HEADERSIZE;
-    memset(key,0,KEY_SIZE);
     memcpy(key, request, KEY_SIZE);
+    /*int i = 0;
+    for(i = strlen((char*)request); i < KEY_SIZE; i++){
+        printk(KERN_ALERT "i. %d\n", i);
+        key[i] = '0';
+    }*/
+
+    printk(KERN_ALERT "strlen key. %zu\n", strlen(key));
+    printk(KERN_ALERT "strlen request. %zu\n", strlen((char*)request));
     //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
@@ -144,22 +151,22 @@ static void read_GET_struct(PDU_struct *response, data request){
         return;
     }
 
-    if (memcmp(obj_get->key, key, KEY_SIZE) == 0){
-        printk(KERN_INFO "Key matches.\n");
+    //if (memcmp(obj_get->key, key, KEY_SIZE) == 0){
+    //if(obj_get->key == key){
+        printk(KERN_INFO "Key found.\n");
         response->OP_code = KERNEL;
         response->data = obj_get->data;
         response->data_bytes = obj_get->data_bytes;
-    }else{
+    /*}else{
         printk(KERN_INFO "Key does not match...\n");
         response->OP_code = KERNEL;
         response->data = "Key does not match...";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
-    }
+    }*/
 
 }
 
 static void read_INSERT_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
@@ -175,6 +182,10 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
     memcpy(obj->key, request, KEY_SIZE);
+    /*int i = 0;
+    for(i = strlen((char*)request); i < KEY_SIZE; i++){
+        obj->key[i] = '0';
+    }*/
     //obj->key = 1337;
     printk(KERN_INFO "obj->key: %s\n", obj->key);
     request+=KEY_SIZE;
@@ -222,54 +233,31 @@ static void read_INIT_struct(PDU_struct *response, data data){
 }
 int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    printk(KERN_INFO "arg->key: %s\n", (char*)arg->key);
-    printk(KERN_INFO "obj: %s\n", (char*)obj);
-    return strncmp((char*)arg->key, (char*)obj, KEY_SIZE);
-    //return memcmp(arg->key, obj, KEY_SIZE);
-}
+    struct rhashtable *ht = arg->ht;
+	const char *ptr = obj;
+    printk(KERN_INFO "ptr: %s\n", (char*)(ptr));
+    printk(KERN_INFO "ptr + ht->p.key_offset: %s\n", (char*)(ptr + ht->p.key_offset));
 
-static void work_handler(struct work_struct *work){
-    printk("Entering: %s\n",__FUNCTION__);
-    struct work_data * data = (struct work_data *)work;
-    kfree(data);
+    printk(KERN_INFO "ht->p.key_offset: %zu\n", ht->p.key_offset);
+    return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
 }
 
 static int __init init(void) {
     printk("Entering: %s\n",__FUNCTION__);
     /* This is for 3.6 kernels and above.*/
-    struct netlink_kernel_cfg cfg_receive = {
+    struct netlink_kernel_cfg cfg = {
         .input = recieve_data,
     };
 
-    struct netlink_kernel_cfg cfg_send = {
-        .input = recieve_data,
-    };
+    nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
 
-    nl_sk_receive = netlink_kernel_create(&init_net, NETLINK_USER, &cfg_receive);
+    if(!nl_sk)
+    {
 
-    if(!nl_sk_receive){
-        printk(KERN_ALERT "Error creating socket receive.\n");
+        printk(KERN_ALERT "Error creating socket.\n");
         return -10;
+
     }
-
-
-
-    nl_sk_send = netlink_kernel_create(&init_net, NETLINK_USER2, &cfg_send);
-
-    if(!nl_sk_send){
-        printk(KERN_ALERT "Error creating socket send.\n");
-        netlink_kernel_release(nl_sk_receive);
-        return -10;
-    }
-
-
-
-    struct work_data * data;
-
-    wq = create_workqueue("wq_test");
-    data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
-    INIT_WORK(&data->work, work_handler);
-    queue_work(wq, &data->work);
 
     return 0;
 }
@@ -277,8 +265,5 @@ static int __init init(void) {
 static void __exit exit(void) {
 
     printk(KERN_INFO "exiting hello module\n");
-    netlink_kernel_release(nl_sk_send);
-    netlink_kernel_release(nl_sk_receive);
-    flush_workqueue(wq);
-    destroy_workqueue(wq);
+    netlink_kernel_release(nl_sk);
 }

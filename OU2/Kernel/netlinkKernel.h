@@ -11,32 +11,30 @@
 #include <linux/skbuff.h>
 #include <linux/jhash.h>
 #include <linux/rhashtable.h>
-#include <linux/workqueue.h>.
 #include "../Resources/PDU_kernel.h"
 //dmesg | tail
 
 #define MAX_ENTRIES	1000000
 #define HT_SIZE	8
-#define NETLINK_USER 20
-#define NETLINK_USER2 26
+#define NETLINK_USER 31
 #define HEADERSIZE 4
 
 #define TEST_DATA ("Jag heter HASSE!!!")
 
-typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
-	         const void *obj);
 
-struct sock *nl_sk_receive;
-struct sock *nl_sk_send;
+
+//typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
+//	         const char *obj);
+
+struct sock *nl_sk;
 
 static struct rhashtable ht;
 
-struct nlmsghdr *nlh_kernel_send;
+struct nlmsghdr *nlh_kernel;
 int pid;
 struct sk_buff *skb_out;
 int msg_size;
 
-struct nlmsghdr *nlh_kernel_receive;
 
 
 static void recieve_data(struct sk_buff *skb);
@@ -53,8 +51,6 @@ static void read_INIT_struct(PDU_struct *response, data data);
 
 static void read_GET_struct(PDU_struct *response, data request);
 
-static void work_handler(struct work_struct *work);
-
 static int __init init(void);
 
 static void __exit exit(void);
@@ -64,8 +60,10 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj);
 
 
 struct rhash_object {
-	char key[KEY_SIZE];
+
+	//u16 key;
 	struct rhash_head node;
+	char key[KEY_SIZE];
 	u16 data_bytes;
 	data data;
 };
@@ -74,7 +72,7 @@ static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = HT_SIZE,
 	.head_offset = offsetof(struct rhash_object, node),
 	.key_offset = offsetof(struct rhash_object, key),
-	.key_len = sizeof(char)*KEY_SIZE,
+	.key_len = 1,
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
 	.obj_cmpfn = my_compare_function,
@@ -82,14 +80,6 @@ static const struct rhashtable_params test_rht_params = {
 
 
 
-
-
-struct workqueue_struct *wq;
-
-struct work_data {
-	struct work_struct work;
-	int data;
-};
 
 module_init(init);
 module_exit(exit);
