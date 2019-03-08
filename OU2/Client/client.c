@@ -26,6 +26,7 @@ int main(int argc, char **argv){
         printf("Exit program.\n");
         exit(EXIT_FAILURE);
     }
+    
     PDU_struct *PDU_struct_send = NULL;
     PDU_struct *PDU_struct_recieve = NULL;
 
