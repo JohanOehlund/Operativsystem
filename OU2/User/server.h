@@ -4,11 +4,18 @@
 
 #ifndef DODOU2_SERVER_H
 #define DODOU2_SERVER_H
-
-#define THREADS 10
-
 #include "../Resources/socket.h"
 
+#define THREADS 10
+#define NETLINK_USER 20
+#define NETLINK_USER2 26
+
+int sock_fd;
+int sock_fd2;
+struct sockaddr_nl src_addr, dest_addr;
+struct nlmsghdr *nlh_user = NULL;
+struct iovec iov;
+struct msghdr msg;
 
 
 typedef struct clientThreadInfo {
@@ -43,24 +50,6 @@ void *joinThreads(void *arg);
 
 
 
-
-
-
-
-
-
-
-
-
-#define NETLINK_USER 31
-
-int sock_fd;
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh_user = NULL;
-struct iovec iov;
-struct msghdr msg;
-
-
 size_t strnlen(const char *s, size_t maxlen);
 
 void *test_rhashtable(data arg);
@@ -71,6 +60,7 @@ void insert_rhashtable(char* key);
 
 
 int setup_netlink();
+int setup_netlink2();
 void reset_netlink();
 
 

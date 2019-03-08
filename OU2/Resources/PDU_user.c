@@ -321,8 +321,6 @@ data create_INSERT_buffer(data pdu){
     memcpy(response_buffer, &insert_struct->data_bytes, 2);
     response_buffer+=3;
     memcpy(response_buffer, insert_struct->key, KEY_SIZE);
-    printf("KEY i PDU:user insert: %s\n", insert_struct->key);
-
     response_buffer+=KEY_SIZE;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);
