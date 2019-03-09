@@ -3,7 +3,6 @@
 //https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
 extern int errno = 0;
-//char key[KEY_SIZE];
 
 static void recieve_data(struct sk_buff *skb) {
 
@@ -90,11 +89,12 @@ static data PDU_to_buffer_kernel(PDU_struct *pdu){
 }
 
 static void read_DELETE_struct(PDU_struct *response, data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     char key[KEY_SIZE];
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
     //char key[KEY_SIZE];
     request+=HEADERSIZE;
+    memset(key,0,KEY_SIZE);
     memcpy(key, request, KEY_SIZE);
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
@@ -126,18 +126,12 @@ static void read_DELETE_struct(PDU_struct *response, data request){
 }
 
 static void read_GET_struct(PDU_struct *response, data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     char key[KEY_SIZE];
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+
+
     request+=HEADERSIZE;
     memcpy(key, request, KEY_SIZE);
-    /*int i = 0;
-    for(i = strlen((char*)request); i < KEY_SIZE; i++){
-        printk(KERN_ALERT "i. %d\n", i);
-        key[i] = '0';
-    }*/
-
-    printk(KERN_ALERT "strlen key. %zu\n", strlen(key));
-    printk(KERN_ALERT "strlen request. %zu\n", strlen((char*)request));
     //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
@@ -151,22 +145,22 @@ static void read_GET_struct(PDU_struct *response, data request){
         return;
     }
 
-    //if (memcmp(obj_get->key, key, KEY_SIZE) == 0){
-    //if(obj_get->key == key){
-        printk(KERN_INFO "Key found.\n");
+    if (memcmp(obj_get->key, key, KEY_SIZE) == 0){
+        printk(KERN_INFO "Key matches.\n");
         response->OP_code = KERNEL;
         response->data = obj_get->data;
         response->data_bytes = obj_get->data_bytes;
-    /*}else{
+    }else{
         printk(KERN_INFO "Key does not match...\n");
         response->OP_code = KERNEL;
         response->data = "Key does not match...";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
-    }*/
+    }
 
 }
 
 static void read_INSERT_struct(PDU_struct *response, data request){
+    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
@@ -182,10 +176,6 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
     memcpy(obj->key, request, KEY_SIZE);
-    /*int i = 0;
-    for(i = strlen((char*)request); i < KEY_SIZE; i++){
-        obj->key[i] = '0';
-    }*/
     //obj->key = 1337;
     printk(KERN_INFO "obj->key: %s\n", obj->key);
     request+=KEY_SIZE;
@@ -235,11 +225,8 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhashtable *ht = arg->ht;
 	const char *ptr = obj;
-    printk(KERN_INFO "ptr: %s\n", (char*)(ptr));
-    printk(KERN_INFO "ptr + ht->p.key_offset: %s\n", (char*)(ptr + ht->p.key_offset));
 
-    printk(KERN_INFO "ht->p.key_offset: %zu\n", ht->p.key_offset);
-    return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
+	return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
 }
 
 static int __init init(void) {

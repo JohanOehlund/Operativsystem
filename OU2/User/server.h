@@ -8,7 +8,6 @@
 #define THREADS 10
 #define NETLINK_USER 31
 
-
 #include "../Resources/socket.h"
 
 
@@ -42,6 +41,9 @@ void closeServer();
 void *serverWrite(void *arg);
 
 void *joinThreads(void *arg);
+
+
+
 
 int sock_fd;
 struct sockaddr_nl src_addr, dest_addr;
