@@ -134,6 +134,7 @@ static void read_GET_struct(PDU_struct *response, data request){
     memcpy(key, request, KEY_SIZE);
     //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
+    printk(KERN_INFO "key strlen(request): %zu\n", strlen(request));
     //struct rhash_object *obj_get;
     struct rhash_object *obj_get = NULL;
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
@@ -178,6 +179,7 @@ static void read_INSERT_struct(PDU_struct *response, data request){
     memcpy(obj->key, request, KEY_SIZE);
     //obj->key = 1337;
     printk(KERN_INFO "obj->key: %s\n", obj->key);
+    printk(KERN_INFO "obj->key len: %zu\n", strlen(obj->key));
     request+=KEY_SIZE;
     obj->data = kmalloc(obj->data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (obj->data_bytes));
@@ -222,8 +224,12 @@ static void read_INIT_struct(PDU_struct *response, data data){
 
 }
 int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    struct rhashtable *ht = arg->ht;
+    const char *ptr = obj;
 
-    return memcmp(arg->key, obj, KEY_SIZE);
+    return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
+    //return memcmp(arg->key, obj, KEY_SIZE);
 }
 
 static int __init init(void) {

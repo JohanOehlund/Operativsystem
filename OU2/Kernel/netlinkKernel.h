@@ -55,8 +55,8 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj);
 
 
 struct rhash_object {
-	char key[KEY_SIZE];
 	struct rhash_head node;
+	char key[KEY_SIZE];
 	u16 data_bytes;
 	data data;
 };
