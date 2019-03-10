@@ -25,7 +25,9 @@ int main(int argc, char **argv){
     pthread_t trd[5];
     closeAllClients = false;
     exitServer=false;
-    setup_netlink();
+    setup_netlink_send();
+    setup_netlink_receive();
+
 
     closeAllClients = false;
     exitServer=false;
@@ -312,7 +314,9 @@ void *clientlistener(void *arg){
 
 
     while(1) {
-
+        reset_netlink_send();
+        reset_netlink_receive();
+        
         PDU_struct *PDU_struct_SEND = NULL;
         PDU_struct *PDU_struct_RECEIVE = NULL;
         /*if(llist_isEmpty(clients_sockets)){
@@ -322,29 +326,28 @@ void *clientlistener(void *arg){
                 p3 = llist_next(p3);
             }
         }*/
-        reset_netlink();
-        PDU_struct_SEND = receive_pdu(temp_socket);
 
-        memcpy(NLMSG_DATA(nlh_user), PDU_struct_SEND->data, PDU_struct_SEND->data_bytes);
+        PDU_struct_SEND = receive_pdu(temp_socket);
         if((int *)PDU_struct_SEND==(int*)-100){
             //llist_insertfirst(terminatedThreads, &cti->thread_num);
             closeConnectedClient(temp_socket, 1);
             return NULL;
         }
-
+        memcpy(NLMSG_DATA(nlh_user_send), PDU_struct_SEND->data, PDU_struct_SEND->data_bytes);
         printf("Sending message to kernel\n");
-        sendmsg(sock_fd,&msg,0);
+        sendmsg(sock_fd_send,&msg_send,0);
 
         printf("Waiting for message from kernel\n");
-        recvmsg(sock_fd, &msg, 0);
+        recvmsg(sock_fd_receive, &msg_receive, 0);
 
-        PDU_struct_RECEIVE = read_exactly_from_kernel(nlh_user);
+        PDU_struct_RECEIVE = read_exactly_from_kernel(nlh_user_receive);
         //printf("Received message opcode: %u\n", PDU_struct_RECEIVE->OP_code);
         //printf("Received message data_bytes: %u\n", PDU_struct_RECEIVE->data_bytes);
         send_pdu(temp_socket, PDU_struct_RECEIVE);
 
         free_struct(KERNEL, PDU_struct_RECEIVE);
         free_struct(KERNEL, PDU_struct_SEND);
+        reset_netlink_send();
         usleep(2000);
 
     }
@@ -369,14 +372,14 @@ void closeConnectedClient(int client_sock, int cliC) {
 
     pthread_mutex_lock(&lock);
     llist_position p = llist_first(clients_sockets);
-    for (int i = 0; i < list_length(clients_sockets); ++i) {
+    /*for (int i = 0; i < list_length(clients_sockets); ++i) {
         socket = *(int*)llist_inspect(p, clients_sockets);
         if(client_sock == socket) {
             llist_remove(clients_sockets, p);
             break;
         }
         p = llist_next(p);
-    }
+    }*/
     llist_position p2 = llist_first(client_ids);
     for (int j = 0; j < list_length(client_ids) ; ++j) {
         temp_client = llist_inspect(p2, client_ids);
@@ -424,191 +427,77 @@ void printWrongParams(char *progName) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-void *test_rhashtable(data arg) {
-    setup_netlink();
-
-    init_rhashtable();
-    int i;
-    char key[KEY_SIZE];
-    char key2[KEY_SIZE];
-    char key3[KEY_SIZE];
-    for (i = 10; i < 15; i++) {
-        memcpy(key, "10", KEY_SIZE);
-        reset_netlink();
-        insert_rhashtable(key);
-    //}
-    //printf("HEJHEJ2\n");
-    //int j;
-    //for (j = 10; j < 15; j++) {
-        //memcpy(key2, "10", KEY_SIZE);
-        reset_netlink();
-        get_rhashtable(key);
-    //}
-    //printf("HEJHEJ3\n");
-    //int k;
-    //for (k = 10; k < 15; k++) {
-        //memcpy(key3, "10", KEY_SIZE);
-        reset_netlink();
-        delete_rhashtable(key);
-    }
-}
-
-void delete_rhashtable(char* key){
-    DELETE_struct *delete_struct = calloc(1,sizeof(DELETE_struct));
-
-    delete_struct->OP_code = DELETE;
-    memcpy(delete_struct->key, key, KEY_SIZE);
-
-    data action = PDU_to_buffer_user(DELETE, delete_struct);
-
-    memcpy(NLMSG_DATA(nlh_user), action, 68);
-
-    //printf("Sending message to kernel\n");
-    sendmsg(sock_fd,&msg,0);
-
-    //printf("Waiting for message from kernel\n");
-    recvmsg(sock_fd, &msg, 0);
-
-    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
-
-    free(delete_struct);
-    free(action);
-    free(pdu->data);
-    free(pdu);
-}
-
-void get_rhashtable(char* key){
-    GET_struct *get_struct = calloc(1,sizeof(GET_struct));
-
-    get_struct->OP_code = GET;
-    memcpy(get_struct->key, key, KEY_SIZE);
-
-    data action = PDU_to_buffer_user(GET, get_struct);
-
-    memcpy(NLMSG_DATA(nlh_user), action, 68);
-
-    //printf("Sending message to kernel\n");
-    sendmsg(sock_fd,&msg,0);
-
-    //printf("Waiting for message from kernel\n");
-    recvmsg(sock_fd, &msg, 0);
-
-    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
-
-    free(get_struct);
-    free(action);
-    free(pdu->data);
-    free(pdu);
-}
-
-void insert_rhashtable(char* key){
-    INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
-    insert_struct->OP_code=INSERT;
-    memcpy(insert_struct->key, key, KEY_SIZE);
-    insert_struct->data_bytes=strnlen(TEST_DATA, MAX_PAYLOAD)+1;
-    insert_struct->data = calloc(1,(insert_struct->data_bytes));
-
-    memcpy(insert_struct->data, TEST_DATA, insert_struct->data_bytes);
-    data action = PDU_to_buffer_user(INSERT, insert_struct);
-
-    memcpy(NLMSG_DATA(nlh_user), action, (insert_struct->data_bytes)+HEADERSIZE+KEY_SIZE);
-
-    //printf("Sending message to kernel\n");
-    sendmsg(sock_fd,&msg,0);
-
-    //printf("Waiting for message from kernel\n");
-    recvmsg(sock_fd, &msg, 0);
-
-    PDU_struct * pdu = read_exactly_from_kernel(nlh_user);
-
-    free(insert_struct->data);
-    free(insert_struct);
-    free(action);
-    free(pdu->data);
-    free(pdu);
-}
-
-void init_rhashtable() {
-
-
-    INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
-    init_struct->OP_code = INIT;
-
-    data action = PDU_to_buffer_user(INIT, init_struct);
-
-    memcpy(NLMSG_DATA(nlh_user), action, HEADERSIZE);
-
-    //printf("Sending message to kernel\n");
-    sendmsg(sock_fd,&msg,0);
-
-    //printf("Waiting for message from kernel\n");
-    recvmsg(sock_fd, &msg, 0);
-
-    PDU_struct *pdu = read_exactly_from_kernel(nlh_user);
-
-    free(init_struct);
-    free(action);
-    free(pdu->data);
-    free(pdu);
-
-}*/
-
-int setup_netlink(){
-    sock_fd=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
-    if(sock_fd<0)
+int setup_netlink_send(){
+    sock_fd_send=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER_SEND);
+    printf("sock_fd_send: %d\n", sock_fd_send);
+    if(sock_fd_send<0){
+        perror("Error creating socket: ");
         return -1;
+    }
 
-    memset(&src_addr, 0, sizeof(src_addr));
-    src_addr.nl_family = AF_NETLINK;
-    src_addr.nl_pid = getpid(); /* self pid */
 
-    memset(&dest_addr, 0, sizeof(dest_addr));
-    memset(&dest_addr, 0, sizeof(dest_addr));
-    dest_addr.nl_family = AF_NETLINK;
-    dest_addr.nl_pid = 0;
-    dest_addr.nl_groups = 0;
+    memset(&src_addr_send, 0, sizeof(src_addr_send));
+    src_addr_send.nl_family = AF_NETLINK;
+    src_addr_send.nl_pid = getpid(); /* self pid */
 
-    nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh_user, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh_user->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh_user->nlmsg_pid = getpid();
-    nlh_user->nlmsg_flags = 0;
+    memset(&dest_addr_send, 0, sizeof(src_addr_send));
+    memset(&src_addr_send, 0, sizeof(src_addr_send));
+    src_addr_send.nl_family = AF_NETLINK;
+    src_addr_send.nl_pid = 0;
+    src_addr_send.nl_groups = 0;
 
-    iov.iov_base = (void *)nlh_user;
-    iov.iov_len = nlh_user->nlmsg_len;
-    msg.msg_name = (void *)&dest_addr;
-    msg.msg_namelen = sizeof(dest_addr);
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
+    nlh_user_send = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user_send, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user_send->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user_send->nlmsg_pid = getpid();
+    nlh_user_send->nlmsg_flags = 0;
 
-    if(bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr))< 0){
+    iov_send.iov_base = (void *)nlh_user_send;
+    iov_send.iov_len = nlh_user_send->nlmsg_len;
+    msg_send.msg_name = (void *)&src_addr_send;
+    msg_send.msg_namelen = sizeof(src_addr_send);
+    msg_send.msg_iov = &iov_send;
+    msg_send.msg_iovlen = 1;
+
+    if(bind(sock_fd_send, (struct sockaddr*)&src_addr_send, sizeof(src_addr_send))< 0){
+        perror("Error: ");
+        return -2;
+    }
+    return sock_fd_send;
+}
+
+int setup_netlink_receive(){
+    sock_fd_receive=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER_RECEIVE);
+    printf("sock_fd_receive: %d\n", sock_fd_receive);
+    if(sock_fd_receive<0){
+        perror("Error creating socket: ");
+        return -1;
+    }
+
+    memset(&src_addr_receive, 0, sizeof(src_addr_receive));
+    src_addr_receive.nl_family = AF_NETLINK;
+    src_addr_receive.nl_pid = getpid(); /* self pid */
+
+    memset(&dest_addr_receive, 0, sizeof(dest_addr_receive));
+    memset(&dest_addr_receive, 0, sizeof(dest_addr_receive));
+    dest_addr_receive.nl_family = AF_NETLINK;
+    dest_addr_receive.nl_pid = 0;
+    dest_addr_receive.nl_groups = 0;
+
+    nlh_user_receive = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user_receive, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user_receive->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user_receive->nlmsg_pid = getpid();
+    nlh_user_receive->nlmsg_flags = 0;
+
+    iov_receive.iov_base = (void *)nlh_user_receive;
+    iov_receive.iov_len = nlh_user_receive->nlmsg_len;
+    msg_receive.msg_name = (void *)&dest_addr_receive;
+    msg_receive.msg_namelen = sizeof(dest_addr_receive);
+    msg_receive.msg_iov = &iov_receive;
+    msg_receive.msg_iovlen = 1;
+
+    if(bind(sock_fd_receive, (struct sockaddr*)&src_addr_receive, sizeof(src_addr_receive))< 0){
         perror("Error: ");
         return -2;
     }
@@ -616,13 +505,25 @@ int setup_netlink(){
 }
 
 
-void reset_netlink(){
+void reset_netlink_send(){
 
     //nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh_user, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh_user->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh_user->nlmsg_pid = getpid();
-    nlh_user->nlmsg_flags = 0;
+    memset(nlh_user_send, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user_send->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user_send->nlmsg_pid = getpid();
+    nlh_user_send->nlmsg_flags = 0;
+
+    //printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
+}
+
+
+void reset_netlink_receive(){
+
+    //nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_user_receive, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_user_receive->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_user_receive->nlmsg_pid = getpid();
+    nlh_user_receive->nlmsg_flags = 0;
 
     //printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
 }

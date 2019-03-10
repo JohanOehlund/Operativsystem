@@ -7,29 +7,44 @@ extern int errno = 0;
 static void recieve_data(struct sk_buff *skb) {
 
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    nlh_kernel=(struct nlmsghdr*)skb->data;
-    PDU_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel));
+    struct sk_buff *copy = skb_copy(skb, GFP_KERNEL);
+    if(copy == NULL){
+        printk(KERN_ERR "Error while copying skb struct...\n");
+        return NULL;
+    }
+    nlh_kernel_receive=(struct nlmsghdr*)skb->data;
+    nlh_kernel_send=(struct nlmsghdr*)copy->data;
+    PDU_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel_receive));
     if(response == NULL){
         printk(KERN_ERR "Error while reading from user space\n");
         return NULL;
     }
     data response_buffer = PDU_to_buffer_kernel(response);
-
-    pid = nlh_kernel->nlmsg_pid; //pid of sending process
+    printk(KERN_ERR "HEJ1\n");
+    pid = nlh_kernel_send->nlmsg_pid; //pid of sending process
+    printk(KERN_ERR "HEJ2\n");
     msg_size=(response->data_bytes)+HEADERSIZE;
-    printk(KERN_ERR "FMsgsize: %u \n", msg_size);
-
+    printk(KERN_ERR "msg_size %d\n", msg_size);
     skb_out = nlmsg_new(msg_size,0);
+    if(skb_out == NULL){
+        printk(KERN_ERR "Error when nlmsg_new\n");
+        return NULL;
+    }
+    printk(KERN_ERR "HEJ4\n");
     if(!skb_out){
         printk(KERN_ERR "Failed to allocate new skb\n");
         return;
     }
-
-
-    nlh_kernel=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
+    printk(KERN_ERR "HEJ5\n");
+    nlh_kernel_send=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
+    printk(KERN_ERR "HEJ6\n");
     NETLINK_CB(skb_out).dst_group = 0;
-    memcpy(nlmsg_data(nlh_kernel), response_buffer, msg_size);
-    int res=nlmsg_unicast(nl_sk,skb_out,pid);
+    printk(KERN_ERR "HEJ7\n");
+    memcpy(nlmsg_data(nlh_kernel_send), response_buffer, msg_size);
+    printk(KERN_ERR "HEJ8\n");
+    int res=nlmsg_unicast(nl_sk_send,skb_out,pid);
+    printk(KERN_ERR "pid %d\n", pid);
+    printk(KERN_ERR "HEJ9\n");
 
     if(res<0)
         printk(KERN_ERR "Error while sending bak to user\n");
@@ -131,6 +146,7 @@ static void read_GET_struct(PDU_struct *response, data request){
 
 
     request+=HEADERSIZE;
+    memset(key,0,KEY_SIZE);
     memcpy(key, request, KEY_SIZE);
     //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
@@ -227,24 +243,49 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
 	const char *ptr = obj;
 
 	return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
+    //return memcmp(arg->key, obj, KEY_SIZE);
+}
+
+static void work_handler(struct work_struct *work){
+    printk("Entering: %s\n",__FUNCTION__);
+    struct work_data * data = (struct work_data *)work;
+    kfree(data);
 }
 
 static int __init init(void) {
     printk("Entering: %s\n",__FUNCTION__);
     /* This is for 3.6 kernels and above.*/
-    struct netlink_kernel_cfg cfg = {
+
+    struct netlink_kernel_cfg cfg_send = {
         .input = recieve_data,
     };
 
-    nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
+    struct netlink_kernel_cfg cfg_receive = {
+        .input = recieve_data,
+    };
 
-    if(!nl_sk)
-    {
+    nl_sk_send = netlink_kernel_create(&init_net, NETLINK_USER_SEND, &cfg_send);
 
-        printk(KERN_ALERT "Error creating socket.\n");
+    if(!nl_sk_send){
+        printk(KERN_ALERT "Error creating socket send.\n");
+
         return -10;
-
     }
+
+    nl_sk_receive = netlink_kernel_create(&init_net, NETLINK_USER_RECEIVE, &cfg_receive);
+
+    if(!nl_sk_receive){
+        printk(KERN_ALERT "Error creating socket receive.\n");
+        netlink_kernel_release(nl_sk_send);
+        return -10;
+    }
+
+    struct work_data * data;
+
+    wq = create_workqueue("wq_test");
+    data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
+    INIT_WORK(&data->work, work_handler);
+    queue_work(wq, &data->work);
 
     return 0;
 }
@@ -252,5 +293,8 @@ static int __init init(void) {
 static void __exit exit(void) {
 
     printk(KERN_INFO "exiting hello module\n");
-    netlink_kernel_release(nl_sk);
+    netlink_kernel_release(nl_sk_send);
+    netlink_kernel_release(nl_sk_receive);
+    flush_workqueue(wq);
+    destroy_workqueue(wq);
 }

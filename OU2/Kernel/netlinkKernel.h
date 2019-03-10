@@ -11,24 +11,33 @@
 #include <linux/skbuff.h>
 #include <linux/jhash.h>
 #include <linux/rhashtable.h>
+#include <linux/workqueue.h>.
 #include "../Resources/PDU_kernel.h"
 //dmesg | tail
 
 #define MAX_ENTRIES	1000000
 #define HT_SIZE	8
-#define NETLINK_USER 31
+#define NETLINK_USER_SEND 31
+#define NETLINK_USER_RECEIVE 30
 #define HEADERSIZE 4
 
 #define TEST_DATA ("Jag heter HASSE!!!")
 
-struct sock *nl_sk;
+typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
+	         const void *obj);
+
+struct sock *nl_sk_receive;
+struct sock *nl_sk_send;
 
 static struct rhashtable ht;
 
-struct nlmsghdr *nlh_kernel;
+struct nlmsghdr *nlh_kernel_send;
+struct nlmsghdr *nlh_kernel_receive;
+
 int pid;
 struct sk_buff *skb_out;
 int msg_size;
+
 
 
 
@@ -45,6 +54,8 @@ static void read_INSERT_struct(PDU_struct *response, data data);
 static void read_INIT_struct(PDU_struct *response, data data);
 
 static void read_GET_struct(PDU_struct *response, data request);
+
+static void work_handler(struct work_struct *work);
 
 static int __init init(void);
 
@@ -71,9 +82,16 @@ static const struct rhashtable_params test_rht_params = {
 	.obj_cmpfn = my_compare_function,
 };
 
-typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
-	         const void *obj);
 
+
+
+
+struct workqueue_struct *wq;
+
+struct work_data {
+	struct work_struct work;
+	int data;
+};
 
 module_init(init);
 module_exit(exit);

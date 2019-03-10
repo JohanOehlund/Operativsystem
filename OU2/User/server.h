@@ -4,11 +4,23 @@
 
 #ifndef DODOU2_SERVER_H
 #define DODOU2_SERVER_H
+#include "../Resources/socket.h"
 
 #define THREADS 10
-#define NETLINK_USER 31
+#define NETLINK_USER_SEND 30
+#define NETLINK_USER_RECEIVE 31
 
-#include "../Resources/socket.h"
+int sock_fd_send;
+struct nlmsghdr *nlh_user_send = NULL;
+struct sockaddr_nl src_addr_send, dest_addr_send;
+struct iovec iov_send;
+struct msghdr msg_send;
+
+int sock_fd_receive;
+struct nlmsghdr *nlh_user_receive = NULL;
+struct sockaddr_nl src_addr_receive, dest_addr_receive;
+struct iovec iov_receive;
+struct msghdr msg_receive;
 
 
 
@@ -44,25 +56,12 @@ void *joinThreads(void *arg);
 
 
 
-
-int sock_fd;
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh_user = NULL;
-struct iovec iov;
-struct msghdr msg;
-
-
 size_t strnlen(const char *s, size_t maxlen);
 
-void *test_rhashtable(data arg);
-void delete_rhashtable(char* key);
-void get_rhashtable(char* key);
-void init_rhashtable();
-void insert_rhashtable(char* key);
+int setup_netlink_send();
+void reset_netlink_send();
 
-
-int setup_netlink();
-void reset_netlink();
-
+int setup_netlink_receive();
+void reset_netlink_receive();
 
 #endif //DODOU2_SERVER_H
