@@ -74,8 +74,10 @@ int main(int argc, char **argv){
                 continue;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
+                continue;
 
         }
+        fflush(stdin);
 
         send_pdu(client_server, PDU_struct_send);
 

@@ -22,6 +22,8 @@
 #define HEADERSIZE 4
 
 #define TEST_DATA ("Jag heter HASSE!!!")
+extern int errno = 0;
+int hashtable_initialized = 0;
 
 struct sock *nl_sk_receive;
 struct sock *nl_sk_send;
@@ -53,6 +55,8 @@ static void read_INIT_struct(PDU_struct *response, data data);
 static void read_GET_struct(PDU_struct *response, data request);
 
 static void work_handler(struct work_struct *work);
+
+static void free_ht_objects(data ptr, data arg);
 
 static int __init init(void);
 
@@ -86,8 +90,8 @@ static const struct rhashtable_params test_rht_params = {
 struct workqueue_struct *wq;
 
 struct work_data {
-	struct work_struct work;
-	int data;
+	struct work_struct my_work;
+	data my_data;
 };
 
 module_init(init);

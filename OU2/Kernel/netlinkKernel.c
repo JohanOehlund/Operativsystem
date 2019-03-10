@@ -2,18 +2,34 @@
 //https://lwn.net/Articles/751374/
 //https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
-extern int errno = 0;
-
 static void recieve_data(struct sk_buff *skb) {
-
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-    struct sk_buff *copy = skb_copy(skb, GFP_KERNEL);
+
+    /*struct sk_buff *copy = skb_unshare(skb, GFP_KERNEL);
     if(copy == NULL){
         printk(KERN_ERR "Error while copying skb struct...\n");
         return NULL;
-    }
+    }*/
+    struct work_data * my_data;
+    my_data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
+    my_data->my_data = skb;
+    INIT_WORK(&my_data->my_work, work_handler);
+    queue_work(wq, &my_data->my_work);
+}
+
+static void work_handler(struct work_struct *work){
+    printk("Entering: %s\n",__FUNCTION__);
+    struct work_data * my_data;
+    my_data = container_of(work, struct work_data,  my_work);
+
+    struct sk_buff *skb = (struct sk_buff *)my_data->my_data;
+    /*struct sk_buff *copy = skb_copy(skb, GFP_KERNEL);
+    if(copy == NULL){
+        printk(KERN_ERR "Error while copying skb struct...\n");
+        return NULL;
+    }*/
     nlh_kernel_receive=(struct nlmsghdr*)skb->data;
-    nlh_kernel_send=(struct nlmsghdr*)copy->data;
+    nlh_kernel_send=(struct nlmsghdr*)skb->data;
     PDU_struct *response = read_exactly_from_user(nlmsg_data(nlh_kernel_receive));
     if(response == NULL){
         printk(KERN_ERR "Error while reading from user space\n");
@@ -104,13 +120,14 @@ static data PDU_to_buffer_kernel(PDU_struct *pdu){
 }
 
 static void read_DELETE_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-
-    //char key[KEY_SIZE];
+    size_t arr_size = KEY_SIZE+1;
+    char key[arr_size];
     request+=HEADERSIZE;
-    memset(key,0,KEY_SIZE);
-    memcpy(key, request, KEY_SIZE);
+    memset(key,'\0',arr_size);
+    memcpy(key, request, strlen((char*)request));
+    key[KEY_SIZE] = '\0';
+
     printk(KERN_INFO "GET key: %s\n", key);
     //struct rhash_object *obj_get;
     struct rhash_object *obj;
@@ -144,14 +161,11 @@ static void read_GET_struct(PDU_struct *response, data request){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     size_t arr_size = KEY_SIZE+1;
     char key[arr_size];
-
-
-
     request+=HEADERSIZE;
     memset(key,'\0',arr_size);
     memcpy(key, request, strlen((char*)request));
     key[KEY_SIZE] = '\0';
-    //key = 1337;
+
     printk(KERN_INFO "GET key: %s\n", key);
     printk(KERN_INFO "Size of key2: %zu\n", sizeof(key));
     printk(KERN_INFO "strlen((char*)request: %zu\n", strlen((char*)request));
@@ -234,6 +248,13 @@ static void read_INSERT_struct(PDU_struct *response, data request){
 
 static void read_INIT_struct(PDU_struct *response, data data){
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    if(hashtable_initialized == 1) {
+        printk(KERN_ALERT "Hashtable already initialized.\n");
+        response->OP_code = KERNEL;
+        response->data = "Hashtable already initialized.";
+        response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
+        return;
+    }
 
     int err = rhashtable_init(&ht, &test_rht_params);
     if (err < 0) {
@@ -242,6 +263,7 @@ static void read_INIT_struct(PDU_struct *response, data data){
         response->data = "Unable to initialize hashtable.";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }else{
+        hashtable_initialized = 1;
         printk(KERN_INFO "Initialized hashtable: %d\n", err);
         response->OP_code = KERNEL;
         response->data = "Initialized hashtable.";
@@ -258,14 +280,11 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
     //return memcmp(arg->key, obj, KEY_SIZE);
 }
 
-static void work_handler(struct work_struct *work){
-    printk("Entering: %s\n",__FUNCTION__);
-    struct work_data * data = (struct work_data *)work;
-    kfree(data);
-}
+
 
 static int __init init(void) {
     printk("Entering: %s\n",__FUNCTION__);
+    hashtable_initialized = 0;
     /* This is for 3.6 kernels and above.*/
 
     struct netlink_kernel_cfg cfg_send = {
@@ -292,21 +311,32 @@ static int __init init(void) {
         return -10;
     }
 
-    struct work_data * data;
-
-    wq = create_workqueue("wq_test");
-    data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
-    INIT_WORK(&data->work, work_handler);
-    queue_work(wq, &data->work);
+    //struct work_data * data;
+    const char *name = "wq_test";
+    wq = create_workqueue(name);
+    //DECLARE_WORK(my_work, void (*work_handler)(void *), void *data);
+    //data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
+    //INIT_WORK(&data->work, work_handler);
+    //queue_work(wq, &data->work);
 
     return 0;
 }
 
+static void free_ht_objects(data ptr, data arg){
+    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    struct rhash_object *data = (struct rhash_object*) ptr;
+    kfree(data->data);
+    kfree(data);
+}
+
 static void __exit exit(void) {
 
-    printk(KERN_INFO "exiting hello module\n");
+    printk(KERN_INFO "exiting module\n");
     netlink_kernel_release(nl_sk_send);
     netlink_kernel_release(nl_sk_receive);
+    if(hashtable_initialized == 1){
+        rhashtable_free_and_destroy(&ht, free_ht_objects, NULL);
+    }
     flush_workqueue(wq);
     destroy_workqueue(wq);
 }
