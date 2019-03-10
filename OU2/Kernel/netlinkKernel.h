@@ -23,9 +23,6 @@
 
 #define TEST_DATA ("Jag heter HASSE!!!")
 
-typedef int (*rht_obj_cmpfn_t)(struct rhashtable_compare_arg *arg,
-	         const void *obj);
-
 struct sock *nl_sk_receive;
 struct sock *nl_sk_send;
 
@@ -67,19 +64,19 @@ int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj);
 
 struct rhash_object {
 	struct rhash_head node;
-	char key[KEY_SIZE];
+	char key[KEY_SIZE+1];
 	u16 data_bytes;
 	data data;
 };
 
 static const struct rhashtable_params test_rht_params = {
 	.nelem_hint = HT_SIZE,
+	.obj_cmpfn = my_compare_function,
 	.head_offset = offsetof(struct rhash_object, node),
 	.key_offset = offsetof(struct rhash_object, key),
 	.key_len = sizeof(char)*KEY_SIZE,
 	.hashfn = jhash,
 	.nulls_base = (3U << RHT_BASE_SHIFT),
-	.obj_cmpfn = my_compare_function,
 };
 
 

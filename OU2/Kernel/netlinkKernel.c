@@ -141,15 +141,20 @@ static void read_DELETE_struct(PDU_struct *response, data request){
 }
 
 static void read_GET_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    size_t arr_size = KEY_SIZE+1;
+    char key[arr_size];
+
 
 
     request+=HEADERSIZE;
-    memset(key,0,KEY_SIZE);
-    memcpy(key, request, KEY_SIZE);
+    memset(key,'\0',arr_size);
+    memcpy(key, request, strlen((char*)request));
+    key[KEY_SIZE] = '\0';
     //key = 1337;
     printk(KERN_INFO "GET key: %s\n", key);
+    printk(KERN_INFO "Size of key2: %zu\n", sizeof(key));
+    printk(KERN_INFO "strlen((char*)request: %zu\n", strlen((char*)request));
     //struct rhash_object *obj_get;
     struct rhash_object *obj_get = NULL;
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
@@ -176,8 +181,10 @@ static void read_GET_struct(PDU_struct *response, data request){
 }
 
 static void read_INSERT_struct(PDU_struct *response, data request){
-    char key[KEY_SIZE];
     printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+
+
+
     struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
         printk(KERN_ALERT "Error when kmalloc in function %s\n", __FUNCTION__);
@@ -187,11 +194,16 @@ static void read_INSERT_struct(PDU_struct *response, data request){
         return NULL;
     }
 
+
     request++;
     memcpy(&obj->data_bytes, request, 2);
     printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
-    memcpy(obj->key, request, KEY_SIZE);
+    size_t arr_size = KEY_SIZE+1;
+    memset(obj->key,'\0',arr_size);
+    memcpy(obj->key, request, strlen((char*)request));
+    obj->key[KEY_SIZE] = '\0';
+
     //obj->key = 1337;
     printk(KERN_INFO "obj->key: %s\n", obj->key);
     request+=KEY_SIZE;
