@@ -17,6 +17,7 @@ int main(int argc, char **argv){
         print_wrong_params(argv[0]);
         return EXIT_FAILURE;
     }
+
     clients_sockets=llist_empty();
     sender_list=llist_empty();
     client_ids=llist_empty();
@@ -27,6 +28,7 @@ int main(int argc, char **argv){
     exitServer=false;
     setup_netlink_send();
     setup_netlink_receive();
+    init_hashtable();
 
 
     closeAllClients = false;
@@ -84,6 +86,21 @@ int main(int argc, char **argv){
 
     //test_rhashtable((void*)0);
     return 0;
+}
+
+void init_hashtable() {
+    PDU_struct *PDU_struct_INIT = calloc(1, sizeof(PDU_struct));
+    PDU_struct_INIT->OP_code = KERNEL;
+    PDU_struct_INIT->data_bytes = HEADERSIZE;
+    PDU_struct_INIT->data = calloc(1, HEADERSIZE);
+    memset(PDU_struct_INIT->data, INIT, 1);
+    memcpy(NLMSG_DATA(nlh_user_send), PDU_struct_INIT->data, PDU_struct_INIT->data_bytes);
+    printf("Sending init to kernel\n");
+    sendmsg(sock_fd_send,&msg_send,0);
+
+    recvmsg(sock_fd_receive, &msg_receive, 0);
+    printf("Init OK from kernel\n");
+    free_struct(KERNEL, PDU_struct_INIT);
 }
 
 void close_server() {
@@ -344,10 +361,10 @@ void *client_listener(void *arg){
         //printf("Received message opcode: %u\n", PDU_struct_RECEIVE->OP_code);
         //printf("Received message data_bytes: %u\n", PDU_struct_RECEIVE->data_bytes);
         send_pdu(temp_socket, PDU_struct_RECEIVE);
+        store_data(PDU_struct_SEND, PDU_struct_RECEIVE);
 
         free_struct(KERNEL, PDU_struct_RECEIVE);
         free_struct(KERNEL, PDU_struct_SEND);
-        reset_netlink_send();
         usleep(2000);
 
     }
@@ -396,6 +413,47 @@ void close_connected_client(int client_sock, int cliC) {
     }
     pthread_mutex_unlock(&lock);
     //free_struct(gen_struct);
+
+}
+
+void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE) {
+
+    data recieve_data = PDU_struct_RECEIVE->data;
+    data send_data = PDU_struct_SEND->data;
+    //data head_recieve = recieve_data;
+    //data head_send = send_data;
+    uint8_t OP_code;
+    uint16_t mess_len;
+    char key[KEY_SIZE+1];
+    key[KEY_SIZE] = '\0';
+    FILE *fp;
+    fp = fopen("test.txt", "a+");
+    recieve_data+=HEADERSIZE;
+
+    if(strncmp((char*)recieve_data, "Error", 5) == 0) {
+        return;
+    }
+    else {
+        memcpy(&OP_code, send_data, 1);
+        if(OP_code == INSERT) {
+            send_data++;
+            memcpy(&mess_len, send_data, 2);
+            send_data+=3;
+            memcpy(key, send_data, KEY_SIZE);
+            char mess[mess_len];
+            send_data+=KEY_SIZE;
+            memcpy(mess, send_data, mess_len);
+
+            fprintf(fp, "%s:%s\n", key, mess);
+
+        }
+        else if(OP_code == DELETE) {
+
+        }
+
+    }
+
+    fclose(fp);
 
 }
 

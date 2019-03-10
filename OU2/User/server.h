@@ -30,6 +30,7 @@ typedef struct clientThreadInfo {
 
 }clientThreadInfo;
 
+void init_hashtable();
 
 void *accept_connections(void *arg);
 
@@ -53,6 +54,8 @@ void close_server();
 void *server_writer(void *arg);
 
 void *join_threads(void *arg);
+
+void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE);
 
 
 

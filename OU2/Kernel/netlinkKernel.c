@@ -186,9 +186,9 @@ static void read_GET_struct(PDU_struct *response, data request){
         response->data = obj_get->data;
         response->data_bytes = obj_get->data_bytes;
     }else{
-        printk(KERN_INFO "Key does not match...\n");
+        printk(KERN_INFO "Error, key does not match...\n");
         response->OP_code = KERNEL;
-        response->data = "Key does not match...";
+        response->data = "Error, key does not match...";
         response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
 
