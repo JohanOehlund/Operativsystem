@@ -14,7 +14,7 @@ pthread_t clientThreads[THREADS];
 
 int main(int argc, char **argv){
     if (argc != 3) {
-        printWrongParams(argv[0]);
+        print_wrong_params(argv[0]);
         return EXIT_FAILURE;
     }
     clients_sockets=llist_empty();
@@ -36,19 +36,19 @@ int main(int argc, char **argv){
         return 1;
     }
 
-    if(pthread_create(&trd[0], NULL, joinThreads, NULL)!=0){
+    if(pthread_create(&trd[0], NULL, join_threads, NULL)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-    if(pthread_create(&trd[1], NULL, sendToClients, (void*)argv)!=0){
+    if(pthread_create(&trd[1], NULL, send_to_clients, (void*)argv)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-    if(pthread_create(&trd[2], NULL, serverWrite, NULL)!=0){
+    if(pthread_create(&trd[2], NULL, server_writer, NULL)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-    if(pthread_create(&trd[3], NULL, acceptConnections, (void*)argv)!=0){
+    if(pthread_create(&trd[3], NULL, accept_connections, (void*)argv)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
@@ -86,7 +86,7 @@ int main(int argc, char **argv){
     return 0;
 }
 
-void closeServer() {
+void close_server() {
     closeAllClients = true;
     while(list_length(availableThreads)<THREADS){
         pthread_mutex_lock(&availableThreads->mtx);
@@ -109,7 +109,7 @@ void closeServer() {
  * @return NULL
  * @comment Shuts down connection and socket if received QUIT or client leaves server.
  */
-void *joinThreads(void *arg) {
+void *join_threads(void *arg) {
     int *temp=NULL;
 
     while(1) {
@@ -142,7 +142,7 @@ void *joinThreads(void *arg) {
  * @return
  * @comment Type EXIT to close server.
  */
-void *serverWrite(void *arg) {
+void *server_writer(void *arg) {
     printf("To close server type <%s>\n",EXIT);
     while (1){
         char message[MAXMESSLEN+1];
@@ -151,7 +151,7 @@ void *serverWrite(void *arg) {
             continue;
         if(strncmp(message, EXIT, 4)==0) {
             printf("Closing server.\n");
-            closeServer();
+            close_server();
             return NULL;
         }
 
@@ -167,7 +167,7 @@ void *serverWrite(void *arg) {
  * @return
  * @comment Thread terminates by setting varible "exitServer" to true.
  */
-void *sendToClients(void *arg){
+void *send_to_clients(void *arg){
 
     while(!exitServer){
         printf("WAITING FOR MESSAGES TO SEND!\n");
@@ -204,7 +204,7 @@ void *sendToClients(void *arg){
  * @param   argv -  input argument to program.
  * @return  sock - The created socket.
  */
-int setupListeningSocket(char **argv) {
+int setup_listening_socket(char **argv) {
 
     sock_init_struct *sis = calloc(1, sizeof(sock_init_struct));
     sis->isUDP=false;
@@ -221,13 +221,13 @@ int setupListeningSocket(char **argv) {
  * @return
  * @comment Closing connection if new client tries to connect when server is full.
  */
-void *acceptConnections(void *arg) {
+void *accept_connections(void *arg) {
     char **argv = arg;
 
 
     int temp2;
     int *thread_number;
-    int sock=setupListeningSocket(argv);
+    int sock=setup_listening_socket(argv);
     listen(sock, 128);
 
     for (int j = 0; j < THREADS ; ++j) {
@@ -244,7 +244,7 @@ void *acceptConnections(void *arg) {
             perror("Receiver - accept failed");
             exit(EXIT_FAILURE);
         }
-        if((thread_number=findFreeThread()) == (int *) -5) {
+        if((thread_number=find_free_thread()) == (int *) -5) {
             shutdown(temp2, SHUT_RDWR); //Server is full
             close(temp2);
             free(client_sock);
@@ -254,7 +254,7 @@ void *acceptConnections(void *arg) {
             clientThreadInfo *cti = calloc(1, sizeof(clientThreadInfo));
             cti->client_sock = *client_sock;
             cti->thread_num = *thread_number;
-            if (pthread_create(&clientThreads[*thread_number], NULL, clientlistener, cti) != 0) {
+            if (pthread_create(&clientThreads[*thread_number], NULL, client_listener, cti) != 0) {
                 perror("pthread_create");
                 exit(EXIT_FAILURE);
             }
@@ -277,7 +277,7 @@ void *acceptConnections(void *arg) {
  * @return int - The first free thread.
  * @comment The list "availableThreads" do not contains threads, it contains the associated thread number.
  */
-int *findFreeThread() {
+int *find_free_thread() {
 
     if(llist_isEmpty(availableThreads)){
         usleep(1000);
@@ -302,13 +302,13 @@ int *findFreeThread() {
  * @return
  * @comment If client leaves then thread terminates and adds its number in the "terminatedthreads" list.
  */
-void *clientlistener(void *arg){
+void *client_listener(void *arg){
     clientThreadInfo *cti = (clientThreadInfo *)arg;
     int temp_socket = cti->client_sock;
 
     bool exitLoop=false;
     PDU_struct *pdu_JOIN = NULL;
-    pdu_JOIN = clientJOIN(temp_socket);
+    pdu_JOIN = client_JOIN(temp_socket);
     JOIN_struct *join_struct = (JOIN_struct*) pdu_JOIN->data;
     printf("Received JOIN from user: %s\n", join_struct->client_ID);
 
@@ -316,7 +316,7 @@ void *clientlistener(void *arg){
     while(1) {
         reset_netlink_send();
         reset_netlink_receive();
-        
+
         PDU_struct *PDU_struct_SEND = NULL;
         PDU_struct *PDU_struct_RECEIVE = NULL;
         /*if(llist_isEmpty(clients_sockets)){
@@ -330,7 +330,7 @@ void *clientlistener(void *arg){
         PDU_struct_SEND = receive_pdu(temp_socket);
         if((int *)PDU_struct_SEND==(int*)-100){
             //llist_insertfirst(terminatedThreads, &cti->thread_num);
-            closeConnectedClient(temp_socket, 1);
+            close_connected_client(temp_socket, 1);
             return NULL;
         }
         memcpy(NLMSG_DATA(nlh_user_send), PDU_struct_SEND->data, PDU_struct_SEND->data_bytes);
@@ -351,7 +351,7 @@ void *clientlistener(void *arg){
         usleep(2000);
 
     }
-    closeConnectedClient(temp_socket, 0);
+    close_connected_client(temp_socket, 0);
     //llist_insertfirst(terminatedThreads, &cti->thread_num);
     return NULL;
 }
@@ -362,7 +362,7 @@ void *clientlistener(void *arg){
  * @param cliC - If cliC=1 then client_sock already closed connection.
  * @return
  */
-void closeConnectedClient(int client_sock, int cliC) {
+void close_connected_client(int client_sock, int cliC) {
 
     //JOIN_struct *join_struct=gen_struct->created_struct;
     int socket = 0;
@@ -404,7 +404,7 @@ void closeConnectedClient(int client_sock, int cliC) {
  * @param client_sock - The connected clients socket.
  * @return gen - The created JOIN_struct.
  */
-PDU_struct *clientJOIN(int client_sock){
+PDU_struct *client_JOIN(int client_sock){
     PDU_struct *PDU_struct=NULL;
     while(1){
         printf("WAITING for JOINPDU\n");
@@ -418,7 +418,7 @@ PDU_struct *clientJOIN(int client_sock){
     return PDU_struct;
 }
 
-void printWrongParams(char *progName) {
+void print_wrong_params(char *progName) {
     fprintf(stderr,
             "%s\n%s %s\n",
             "Invalid parameters",

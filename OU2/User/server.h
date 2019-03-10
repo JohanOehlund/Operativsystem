@@ -31,28 +31,28 @@ typedef struct clientThreadInfo {
 }clientThreadInfo;
 
 
-void *acceptConnections(void *arg);
+void *accept_connections(void *arg);
 
-void *clientlistener(void *arg);
+void *client_listener(void *arg);
 
-int setupListeningSocket(char **argv);
+int setup_listening_socket(char **argv);
 
-int *findFreeThread();
+int *find_free_thread();
 
-void printWrongParams(char *progName);
+void print_wrong_params(char *progName);
 
-void closeConnectedClient(int client_sock, int cliC);
+void close_connected_client(int client_sock, int cliC);
 
 
-void *sendToClients(void *arg);
+void *send_to_clients(void *arg);
 
-PDU_struct *clientJOIN(int client_sock);
+PDU_struct *client_JOIN(int client_sock);
 
-void closeServer();
+void close_server();
 
-void *serverWrite(void *arg);
+void *server_writer(void *arg);
 
-void *joinThreads(void *arg);
+void *join_threads(void *arg);
 
 
 
