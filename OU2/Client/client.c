@@ -1,9 +1,11 @@
 //
 // Created by c15jod on 2017-10-09.
 //
+char *gets(char *str);
 #include "client.h"
 pthread_mutex_t lock;
 char* connectedServer;
+
 int main(int argc, char **argv){
 
     if (argc != 5) {
@@ -11,15 +13,19 @@ int main(int argc, char **argv){
         return EXIT_FAILURE;
     }
 
-    if (pthread_mutex_init(&lock, NULL) != 0){
+    /*if (pthread_mutex_init(&lock, NULL) != 0){
         fprintf(stderr,"\n mutex init failed\n");
         return 1;
-    }
+    }*/
     char message[MAXMESSLEN+1]={0};
     int client_server;
     int choice;
+    int temp_char;
+    char newline;
+    int index;
     char key[MAXMESSLEN+1];
     char data[MAXMESSLEN+1];
+
     //pthread_t trd[1];
 
     if((client_server = setupConnection(argv))==-1){
@@ -30,16 +36,20 @@ int main(int argc, char **argv){
     PDU_struct *PDU_struct_recieve = NULL;
 
     do {
-
+        memset(data,'\0',MAXMESSLEN+1);
+        memset(key,'\0',MAXMESSLEN+1);
+        index = 0;
         printf("\n1. Init hashtable\n");
         printf("2. Insert to hashtable\n");
         printf("3. Get from hashtable\n");
         printf("4. Delete from hashtable\n");
         printf("5. Exit program\n");
         printf("6. TEST_INT_INSERT()\n");
-        printf("\nGive your choice (1 - 5): ");
-        scanf("%d", &choice);
+        printf("\nGive your choice (1 - 6): ");
+        fflush(stdout);
 
+        scanf("%d%c", &choice,&newline);
+        fflush(stdout);
 
         switch (choice) {
             case 1:
@@ -47,19 +57,51 @@ int main(int argc, char **argv){
                 break;
             case 2:
                 printf("\nEnter key: ");
-                scanf("%s", key);
+                temp_char = getchar();
+                key[0] = temp_char;
+                index = 0;
+                while(temp_char != '\n'){
+                     index++;
+                     temp_char = getchar();
+                     if(temp_char != '\n')
+                        key[index] = temp_char;
+                }
                 printf("\nEnter value: ");
-                scanf("%s", data);
-                PDU_struct_send = create_INSERT_to_server(key, data, strnlen(data, MAXMESSLEN)+1);
+                temp_char = getchar();
+                data[0] = temp_char;
+                index = 0;
+                while(temp_char != '\n'){
+                     index++;
+                     temp_char = getchar();
+                     if(temp_char != '\n')
+                        data[index] = temp_char;
+                }
+                PDU_struct_send = create_INSERT_to_server(key, data, strlen(data)+1);
                 break;
             case 3:
                 printf("\nEnter key: ");
-                scanf("%s", key);
+                temp_char = getchar();
+                key[0] = temp_char;
+                index = 0;
+                while(temp_char != '\n'){
+                     index++;
+                     temp_char = getchar();
+                     if(temp_char != '\n')
+                        key[index] = temp_char;
+                }
                 PDU_struct_send = create_GET_to_server(key);
                 break;
             case 4:
                 printf("\nEnter key: ");
-                scanf("%s", key);
+                temp_char = getchar();
+                key[0] = temp_char;
+                index = 0;
+                while(temp_char != '\n'){
+                     index++;
+                     temp_char = getchar();
+                     if(temp_char != '\n')
+                        key[index] = temp_char;
+                }
                 PDU_struct_send = create_DELETE_to_server(key);
                 break;
             case 5:
@@ -185,6 +227,7 @@ PDU_struct *create_INSERT_to_server(char* key, data data, uint16_t data_bytes){
 
     INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
     insert_struct->OP_code=INSERT;
+    memset(insert_struct->key,'\0', KEY_SIZE);
     memcpy(insert_struct->key, key, KEY_SIZE);
     insert_struct->data_bytes = data_bytes;
     insert_struct->data = calloc(1,data_bytes);
@@ -208,6 +251,7 @@ PDU_struct *create_GET_to_server(char* key) {
     GET_struct *get_struct = calloc(1,sizeof(GET_struct));
 
     get_struct->OP_code = GET;
+    memset(get_struct->key,'\0', KEY_SIZE);
     memcpy(get_struct->key, key, KEY_SIZE);
 
     data action = PDU_to_buffer_user(GET, get_struct);
@@ -246,15 +290,18 @@ int connectCS(sock_init_struct *sis, char *clientname){
     PDU_struct *pdu=setupJOINPDU(clientname);
     int server_client=createsocket_client(sis);
 
+    if(server_client == -1) {
+        free_struct(USER, pdu);
+        return -1;
+    }
+
 
     if((send_pdu(server_client,pdu)==-1)){
         fprintf(stderr,"Could not send to server\n");
-        free(pdu->data);
-        free(pdu);
+        free_struct(USER, pdu);
         return -1;
     }
-    free(pdu->data);
-    free(pdu);
+    free_struct(USER, pdu);
     return server_client;
 }
 
@@ -272,8 +319,6 @@ PDU_struct *setupJOINPDU(char *clientname){
     PDU_struct->data_bytes = HEADERSIZE + strnlen(clientname,MAXMESSLEN)+1;
 
     uint16_t client_len = (uint16_t)strnlen(clientname,MAXMESSLEN)+1;
-    printf("client_len %u\n", client_len);
-    printf("client name: %s\n", clientname);
     size_t data_size = HEADERSIZE + strnlen(clientname,MAXMESSLEN)+1;
 
     data data = calloc(1,data_size);

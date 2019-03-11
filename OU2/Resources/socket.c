@@ -92,8 +92,8 @@ int createsocket_client(sock_init_struct *sis) {
     }
 
     if((status=getaddrinfo(sis->nexthost, sis->nextportString, &hints, &res))!=0){
-        fprintf(stderr, "getaddrinfo: %s",gai_strerror(status));
-        //freeaddrinfo(res);
+        fprintf(stderr, "getaddrinfo: %s\n",gai_strerror(status));
+        close(mysocket);
         return -1;
     }
     int i=0;

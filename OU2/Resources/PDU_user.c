@@ -284,7 +284,7 @@ data create_DELETE_buffer(data pdu){
 
     memset(response_buffer, DELETE, 1);
     response_buffer+=HEADERSIZE;
-    memcpy(response_buffer, delete_struct->key, KEY_SIZE);
+    memcpy(response_buffer, delete_struct->key, strlen(delete_struct->key));
 
     return head;
 }
@@ -297,7 +297,7 @@ data create_GET_buffer(data pdu){
 
     memset(response_buffer, GET, 1);
     response_buffer+=HEADERSIZE;
-    memcpy(response_buffer, get_struct->key, KEY_SIZE);
+    memcpy(response_buffer, get_struct->key, strlen(get_struct->key));
 
     return head;
 }
@@ -314,13 +314,13 @@ data create_INSERT_buffer(data pdu){
     size_t response_buffer_size = (insert_struct->data_bytes)+HEADERSIZE + KEY_SIZE;
 
     data response_buffer = calloc(1, response_buffer_size);
-
+    //memset(response_buffer,'\0',response_buffer_size);
     data head = response_buffer;
     memcpy(response_buffer, &insert_struct->OP_code, 1);
     response_buffer++;
     memcpy(response_buffer, &insert_struct->data_bytes, 2);
     response_buffer+=3;
-    memcpy(response_buffer, insert_struct->key, KEY_SIZE);
+    memcpy(response_buffer, &insert_struct->key, strlen(insert_struct->key));
     response_buffer+=KEY_SIZE;
     memcpy(response_buffer, insert_struct->data, (insert_struct->data_bytes));
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);
