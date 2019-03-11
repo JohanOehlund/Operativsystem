@@ -14,6 +14,7 @@ typedef void* data;
 #include <zconf.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <regex.h>  
 #include "list.h"
 
 #define EXIT "exit"

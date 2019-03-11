@@ -36,31 +36,21 @@ static void work_handler(struct work_struct *work){
         return NULL;
     }
     data response_buffer = PDU_to_buffer_kernel(response);
-    printk(KERN_ERR "HEJ1\n");
     pid = nlh_kernel_send->nlmsg_pid; //pid of sending process
-    printk(KERN_ERR "HEJ2\n");
     msg_size=(response->data_bytes)+HEADERSIZE;
-    printk(KERN_ERR "msg_size %d\n", msg_size);
     skb_out = nlmsg_new(msg_size,0);
     if(skb_out == NULL){
         printk(KERN_ERR "Error when nlmsg_new\n");
         return NULL;
     }
-    printk(KERN_ERR "HEJ4\n");
     if(!skb_out){
         printk(KERN_ERR "Failed to allocate new skb\n");
         return;
     }
-    printk(KERN_ERR "HEJ5\n");
     nlh_kernel_send=nlmsg_put(skb_out,0,0,NLMSG_DONE,msg_size,0);
-    printk(KERN_ERR "HEJ6\n");
     NETLINK_CB(skb_out).dst_group = 0;
-    printk(KERN_ERR "HEJ7\n");
     memcpy(nlmsg_data(nlh_kernel_send), response_buffer, msg_size);
-    printk(KERN_ERR "HEJ8\n");
     int res=nlmsg_unicast(nl_sk_send,skb_out,pid);
-    printk(KERN_ERR "pid %d\n", pid);
-    printk(KERN_ERR "HEJ9\n");
 
     if(res<0)
         printk(KERN_ERR "Error while sending bak to user\n");

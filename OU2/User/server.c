@@ -100,7 +100,165 @@ void init_hashtable() {
 
     recvmsg(sock_fd_receive, &msg_receive, 0);
     printf("Init OK from kernel\n");
+
+    load_stored_values();
+
+
     free_struct(KERNEL, PDU_struct_INIT);
+}
+
+void load_stored_values(){
+    regex_t regex;
+    int reti;
+    char msgbuf[KEY_SIZE];
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char *token;
+    FILE *srcFile;
+    srcFile = fopen(STORE_FILE, "r");
+    if (srcFile == NULL){
+        printf("Unable to open file(s).\n");
+        printf("Please check you have read/write previleges.\n");
+        return;
+    }
+
+    reti = regcomp(&regex, ".*:.*", 0);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        exit(1);
+    }
+
+
+    while ((read = getline(&line, &len, srcFile)) != -1) {
+        reti = regexec(&regex, line, 0, NULL, 0);
+        if (!reti) {
+            PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+            INSERT_struct *insert_struct = calloc(1, sizeof(INSERT_struct));
+            /* walk through other tokens */
+            int token_num = 0;
+
+            /* get the first token */
+            token = strtok(line, ":");
+            while( token != NULL ) {
+                if(token_num == 0){
+                    strncpy(insert_struct->key, token, KEY_SIZE);
+                }else if(token_num == 1){
+                    insert_struct->data_bytes = strlen(token)+1;
+                    insert_struct->data = calloc(1, insert_struct->data_bytes);
+                    strncpy(insert_struct->data, token, insert_struct->data_bytes);
+                }
+
+                token = strtok(NULL, ":");
+                token_num++;
+            }
+            insert_struct->OP_code = INSERT;
+            printf("OP_code: %u\n",insert_struct->OP_code);
+            printf("key: %s\n",insert_struct->key);
+            printf("data_bytes: %u\n",insert_struct->data_bytes);
+            printf("data: %s\n",(char*)insert_struct->data);
+            void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
+
+            PDU_struct->OP_code = USER;
+            PDU_struct->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
+            PDU_struct->data = action;
+
+            memcpy(NLMSG_DATA(nlh_user_send), PDU_struct->data, PDU_struct->data_bytes);
+            printf("Sending message to kernel\n");
+            sendmsg(sock_fd_send,&msg_send,0);
+
+            printf("Waiting for message from kernel\n");
+            recvmsg(sock_fd_receive, &msg_receive, 0);
+
+            free_struct(INSERT, insert_struct);
+            free_struct(USER,PDU_struct);
+
+        }
+        else if (reti == REG_NOMATCH) {
+            puts("No match");
+        }
+        else {
+            regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+            fprintf(stderr, "Regex match failed: %s\n", msgbuf);
+            exit(1);
+        }
+        //printf("Retrieved line of length %zu:\n", read);
+        //printf("%s", line);
+    }
+
+    regfree(&regex);
+
+}
+
+void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE) {
+
+    data recieve_data = PDU_struct_RECEIVE->data;
+    data send_data = PDU_struct_SEND->data;
+    //data head_recieve = recieve_data;
+    //data head_send = send_data;
+    uint8_t OP_code;
+    uint16_t mess_len;
+    char key[KEY_SIZE+1];
+    key[KEY_SIZE] = '\0';
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    FILE *srcFile;
+    FILE *tempFile;
+    srcFile = fopen(STORE_FILE, "a+");
+    tempFile = fopen(TMP_FILE, "w+");
+    if (srcFile == NULL || tempFile == NULL){
+        printf("Unable to open file(s).\n");
+        printf("Please check you have read/write previleges.\n");
+
+        exit(EXIT_FAILURE);
+    }
+    recieve_data+=HEADERSIZE;
+
+    if(strncmp((char*)recieve_data, "Error", 5) == 0) {
+        return;
+    }
+    else {
+        memcpy(&OP_code, send_data, 1);
+        send_data++;
+        memcpy(&mess_len, send_data, 2);
+        send_data+=3;
+        memcpy(key, send_data, KEY_SIZE);
+        if(OP_code == INSERT) {
+
+            char mess[mess_len];
+            send_data+=KEY_SIZE;
+            memcpy(mess, send_data, mess_len);
+
+            fprintf(srcFile, "%s:%s\n", key, mess);
+            fclose(srcFile);
+
+        }
+        else if(OP_code == DELETE) {
+            char *pt;
+            while ((read = getline(&line, &len, srcFile)) != -1) {
+                char copy[read];
+                strncpy(copy, line, read);
+                pt = strtok(copy,":");
+                if(strcmp(pt, key) != 0){
+                    fprintf(tempFile, "%s", line);
+                }
+            }
+            // Move src file pointer to beginning
+            rewind(tempFile);
+
+            fclose(srcFile);
+            FILE *newFile;
+            newFile = fopen(STORE_FILE, "w");
+            while ((read = getline(&line, &len, tempFile)) != -1) {
+                fprintf(newFile, "%s", line);
+            }
+            fclose(newFile);
+            fclose(tempFile);
+        }
+
+    }
+
 }
 
 void close_server() {
@@ -416,46 +574,7 @@ void close_connected_client(int client_sock, int cliC) {
 
 }
 
-void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE) {
 
-    data recieve_data = PDU_struct_RECEIVE->data;
-    data send_data = PDU_struct_SEND->data;
-    //data head_recieve = recieve_data;
-    //data head_send = send_data;
-    uint8_t OP_code;
-    uint16_t mess_len;
-    char key[KEY_SIZE+1];
-    key[KEY_SIZE] = '\0';
-    FILE *fp;
-    fp = fopen("test.txt", "a+");
-    recieve_data+=HEADERSIZE;
-
-    if(strncmp((char*)recieve_data, "Error", 5) == 0) {
-        return;
-    }
-    else {
-        memcpy(&OP_code, send_data, 1);
-        if(OP_code == INSERT) {
-            send_data++;
-            memcpy(&mess_len, send_data, 2);
-            send_data+=3;
-            memcpy(key, send_data, KEY_SIZE);
-            char mess[mess_len];
-            send_data+=KEY_SIZE;
-            memcpy(mess, send_data, mess_len);
-
-            fprintf(fp, "%s:%s\n", key, mess);
-
-        }
-        else if(OP_code == DELETE) {
-
-        }
-
-    }
-
-    fclose(fp);
-
-}
 
 
 /* Creates a JOIN_struct of the newly connected client.

@@ -9,7 +9,8 @@
 #define THREADS 10
 #define NETLINK_USER_SEND 30
 #define NETLINK_USER_RECEIVE 31
-
+#define STORE_FILE "stored_values.txt"
+#define TMP_FILE "delete-line.tmp"
 int sock_fd_send;
 struct nlmsghdr *nlh_user_send = NULL;
 struct sockaddr_nl src_addr_send, dest_addr_send;
@@ -57,7 +58,7 @@ void *join_threads(void *arg);
 
 void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE);
 
-
+void load_stored_values();
 
 size_t strnlen(const char *s, size_t maxlen);
 
