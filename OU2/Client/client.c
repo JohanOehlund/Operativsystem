@@ -17,40 +17,45 @@ int main(int argc, char **argv){
         fprintf(stderr,"\n mutex init failed\n");
         return 1;
     }*/
-    char message[MAXMESSLEN+1]={0};
+    pthread_t trd[1];
     int client_server;
+
+    if((client_server = setupConnection(argv))==-1){
+        printf("Exit program.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(pthread_create(&trd[0], NULL, client_listen, &client_server) != 0){
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
+
+    client_send(client_server);
+
+    if(pthread_join(trd[0],NULL) != 0) {
+        perror("thread join");
+        exit(EXIT_FAILURE);
+    }
+
+    return 0;
+}
+
+data client_send(int sock){
     int choice;
     int temp_char;
     char newline;
     int index;
     char key[MAXMESSLEN+1];
     char data[MAXMESSLEN+1];
-
-    //pthread_t trd[1];
-
-    if((client_server = setupConnection(argv))==-1){
-        printf("Exit program.\n");
-        exit(EXIT_FAILURE);
-    }
     PDU_struct *PDU_struct_send = NULL;
-    PDU_struct *PDU_struct_recieve = NULL;
-
     do {
         memset(data,'\0',MAXMESSLEN+1);
         memset(key,'\0',MAXMESSLEN+1);
         index = 0;
-        printf("\n1. Init hashtable\n");
-        printf("2. Insert to hashtable\n");
-        printf("3. Get from hashtable\n");
-        printf("4. Delete from hashtable\n");
-        printf("5. Exit program\n");
-        printf("6. TEST_INT_INSERT()\n");
-        printf("\nGive your choice (1 - 6): ");
-        fflush(stdout);
 
+        print_options();
         scanf("%d%c", &choice,&newline);
         fflush(stdout);
-
         switch (choice) {
             case 1:
                 PDU_struct_send = create_INIT_to_server();
@@ -107,38 +112,53 @@ int main(int argc, char **argv){
             case 5:
                 printf("Closing program\n");
                 PDU_struct_send = create_QUIT_to_server();
-                send_pdu(client_server, PDU_struct_send);
+                send_pdu(sock, PDU_struct_send);
                 free_struct(USER,PDU_struct_send);
                 return 0;
                 break;
             case 6:
-                TEST_INT_INSERT(client_server);
+                TEST_INT_INSERT(sock);
                 continue;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
                 continue;
 
         }
-        fflush(stdin);
+        send_pdu(sock, PDU_struct_send);
+        free_struct(USER,PDU_struct_send);
+        //free_struct(KERNEL,PDU_struct_recieve);
+    }while (choice != 5);
+    shutdown(sock,SHUT_RDWR);
+    close(sock);
+}
 
-        send_pdu(client_server, PDU_struct_send);
+void print_options(){
+    printf("\n1. Init hashtable\n");
+    printf("2. Insert to hashtable\n");
+    printf("3. Get from hashtable\n");
+    printf("4. Delete from hashtable\n");
+    printf("5. Exit program\n");
+    printf("6. TEST_INT_INSERT()\n");
+    printf("\nGive your choice (1 - 6): ");
+    fflush(stdout);
+}
 
-        /*PDU_struct = create_message_to_server(message);
-        send_pdu(client_server, PDU_struct);
-        free(PDU_struct->data);
-        free(PDU_struct);*/
+data client_listen(data arg) {
+    int client_server = *(int*)arg;
+    while(1){
+        PDU_struct *PDU_struct_recieve = NULL;
         PDU_struct_recieve = receive_pdu(client_server);
         //printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
         //printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
-        printf("\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
-
-
-        free_struct(USER,PDU_struct_send);
-        free_struct(KERNEL,PDU_struct_recieve);
-    }while (choice != 5);
-
-    return 0;
+        printf("\n\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
+        free_struct(USER,PDU_struct_recieve);
+        print_options();
+    }
+    shutdown(client_server,SHUT_RDWR);
+    close(client_server);
+    return NULL;
 }
+
 
 void TEST_INT_INSERT(int sock){
 

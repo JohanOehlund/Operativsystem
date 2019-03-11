@@ -33,9 +33,9 @@ typedef struct clientThreadInfo {
 
 void init_hashtable();
 
-void *accept_connections(void *arg);
+data accept_connections(void *arg);
 
-void *client_listener(void *arg);
+data client_listener(void *arg);
 
 int setup_listening_socket(char **argv);
 
@@ -45,22 +45,23 @@ void print_wrong_params(char *progName);
 
 void close_connected_client(int client_sock, int cliC);
 
-
-void *send_to_clients(void *arg);
+data send_to_clients(void *arg);
 
 PDU_struct *client_JOIN(int client_sock);
 
 void close_server();
 
-void *server_writer(void *arg);
+data server_writer(void *arg);
 
-void *join_threads(void *arg);
+data join_threads(void *arg);
 
 void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE);
 
 void load_stored_values();
 
 size_t strnlen(const char *s, size_t maxlen);
+
+data kernel_communication(data arg);
 
 int setup_netlink_send();
 void reset_netlink_send();

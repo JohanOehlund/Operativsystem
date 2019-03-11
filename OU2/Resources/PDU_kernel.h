@@ -20,8 +20,8 @@ typedef void* data;
 
 
 typedef struct PDU_struct {
-	uint8_t OP_code;
-	uint16_t data_bytes;
+	u8 OP_code;
+	u16 data_bytes;
 	data data;
 }PDU_struct;
 

@@ -189,16 +189,21 @@ PDU_struct *llist_removefirst_PDU(llist *l) {
         l->head->next = p->next;
         p->next->previous = NULL;
     }
-    PDU_struct *pdu_struct_data=p->data;
-    void *pdu_data=calloc(1,pdu_struct_data->numbytes);
-    PDU_struct *pdu_struct = calloc(1,sizeof(PDU_struct));
+    /*
+    uint8_t OP_code;
+    uint16_t data_bytes;
+    data data;
+    */
+    PDU_struct *pdu_struct_data = p->data;
+    data pdu_data=calloc(1,pdu_struct_data->data_bytes);
+    memcpy(pdu_data,pdu_struct_data->data,pdu_struct_data->data_bytes);
 
-    memcpy(pdu_data,pdu_struct_data->pdu,pdu_struct_data->numbytes);
-    pdu_struct->numbytes=pdu_struct_data->numbytes;
+    PDU_struct *pdu_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+    pdu_struct->OP_code = pdu_struct_data->OP_code;
+    pdu_struct->data_bytes = pdu_struct_data->data_bytes;
+    pdu_struct->data = pdu_data;
 
-    pdu_struct->pdu=pdu_data;
-
-    free(pdu_struct_data->pdu);
+    free(pdu_struct_data->data);
     free(pdu_struct_data);
     //free(p->data);
     free(p);

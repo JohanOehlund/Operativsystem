@@ -9,6 +9,8 @@
 
 int setupConnection(char **argv);
 
+data client_listen(void *arg);
+
 int connectCS(sock_init_struct *sis, char *clientname);
 
 PDU_struct *create_QUIT_to_server();
@@ -27,6 +29,9 @@ PDU_struct *create_INIT_to_server();
 
 void printWrongParams(char *progName);
 
+void print_options();
+
+data client_send(int sock);
 
 void TEST_INT_INSERT(int sock);
 
