@@ -189,13 +189,9 @@ PDU_struct *llist_removefirst_PDU(llist *l) {
         l->head->next = p->next;
         p->next->previous = NULL;
     }
-    /*
-    uint8_t OP_code;
-    uint16_t data_bytes;
-    data data;
-    */
+
     PDU_struct *pdu_struct_data = p->data;
-    data pdu_data=calloc(1,pdu_struct_data->data_bytes);
+    data pdu_data=calloc(1,pdu_struct_data->data_bytes+1);
     memcpy(pdu_data,pdu_struct_data->data,pdu_struct_data->data_bytes);
 
     PDU_struct *pdu_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));

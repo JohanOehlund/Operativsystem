@@ -30,7 +30,7 @@ run:
 	./server 6666 HASSES_HUSMORSTIPS
 
 valgrind:
-	valgrind --leak-check=full --track-origins=yes  ./server 6666 HASSES_HUSMORSTIPS
+	valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all  ./server 6666 HASSES_HUSMORSTIPS
 
 helgrind:
 	valgrind --tool=helgrind --history-level=approx ./server 6666 HASSES_HUSMORSTIPS

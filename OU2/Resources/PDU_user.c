@@ -49,14 +49,15 @@ PDU_struct *read_QUIT(int sock){
     }
 
     PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct) + sizeof(data));
-    QUIT_struct *delete_struct = calloc(1, sizeof(QUIT_struct));
+    QUIT_struct *quit_struct = calloc(1, sizeof(QUIT_struct));
 
 
-    delete_struct->OP_code = QUIT;
-    delete_struct->sock = sock;
+    quit_struct->OP_code = QUIT;
+    quit_struct->sock = sock;
 
-    PDU_struct->OP_code = USER;
-    PDU_struct->data = delete_struct;
+    PDU_struct->OP_code = QUIT;
+    PDU_struct->data = quit_struct;
+    free(header);
     return PDU_struct;
 
 }
@@ -81,7 +82,7 @@ PDU_struct *read_JOIN(int sock){
     header++;
     memcpy(&name_len, header, 2);
     PDU_struct->data_bytes = name_len;
-    join_struct->client_ID = calloc(1, PDU_struct->data_bytes);
+    join_struct->client_ID = calloc(1, PDU_struct->data_bytes+1);
 
     nread = 0;
     while(nread < PDU_struct->data_bytes){
@@ -94,7 +95,7 @@ PDU_struct *read_JOIN(int sock){
     join_struct->OP_code = JOIN;
     join_struct->ID_len = name_len;
 
-    PDU_struct->OP_code = USER;
+    PDU_struct->OP_code = JOIN;
     PDU_struct->data = join_struct;
     header--;
     free(header);
@@ -360,12 +361,20 @@ void free_struct(uint8_t OP_code, data free_struct){
     }else if(OP_code == DELETE){
         DELETE_struct *temp_struct = (DELETE_struct*) free_struct;
         free(temp_struct);
-    }else if(OP_code == KERNEL || OP_code == USER){
+    }else if(OP_code == KERNEL || OP_code == USER || OP_code == QUIT){
         PDU_struct *temp_struct = (PDU_struct*) free_struct;
         free(temp_struct->data);
         free(temp_struct);
-    }else{
+    }else if(OP_code == JOIN){
+        PDU_struct *temp_struct = (PDU_struct*) free_struct;
+        JOIN_struct *temp_join = temp_struct->data;
+        free(temp_join->client_ID);
+        free(temp_join);
+        free(temp_struct);
+
+    }else {
         fprintf(stderr, "Invalid OP_code in free_struct.\n");
+
     }
 
 }

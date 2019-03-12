@@ -242,7 +242,7 @@ PDU_struct *create_INIT_to_server(){
     PDU_struct *PDU_struct = calloc(1, sizeof(PDU_struct)+sizeof(data));
 
     INIT_struct* init_struct = calloc(1, sizeof(INIT_struct));
-    init_struct->OP_code = USER;
+    init_struct->OP_code = INIT;
 
     data buffer = PDU_to_buffer_user(INIT, init_struct);
 
