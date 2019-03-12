@@ -45,8 +45,6 @@ void print_wrong_params(char *progName);
 
 void close_connected_client(int client_sock, int cliC);
 
-data send_to_clients(void *arg);
-
 PDU_struct *client_JOIN(int client_sock);
 
 void close_server();

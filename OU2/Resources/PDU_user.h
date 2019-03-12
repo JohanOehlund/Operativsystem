@@ -14,7 +14,7 @@ typedef void* data;
 #include <zconf.h>
 #include <stdint.h>
 #include <ctype.h>
-#include <regex.h>  
+#include <regex.h>
 #include "list.h"
 
 #define EXIT "exit"
@@ -88,6 +88,8 @@ PDU_struct *read_exactly(int sock, uint8_t OP_code);
 PDU_struct *read_exactly_from_kernel(struct nlmsghdr *nlh);
 
 data PDU_to_buffer_user(uint8_t OP_code, data pdu);
+
+PDU_struct *create_QUIT_pdu();
 
 data create_DELETE_buffer(data pdu);
 

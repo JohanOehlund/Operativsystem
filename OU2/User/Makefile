@@ -27,13 +27,13 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 /*--track-origins=yes*/
 run:
-	./server 6666 HASSES_HUSMORSTIPS itchy.cs.umu.se 1337
+	./server 6666 HASSES_HUSMORSTIPS
 
 valgrind:
-	valgrind --leak-check=full --track-origins=yes  ./server 6666 HASSES_HUSMORSTIPS itchy.cs.umu.se 1337
+	valgrind --leak-check=full --track-origins=yes  ./server 6666 HASSES_HUSMORSTIPS
 
 helgrind:
-	valgrind --tool=helgrind --history-level=approx ./server 6666 HASSES_HUSMORSTIPS itchy.cs.umu.se 1337
+	valgrind --tool=helgrind --history-level=approx ./server 6666 HASSES_HUSMORSTIPS
 
 #MISC CMDS:
 clean:

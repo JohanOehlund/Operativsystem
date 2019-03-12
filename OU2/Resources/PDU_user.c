@@ -52,10 +52,10 @@ PDU_struct *read_QUIT(int sock){
     QUIT_struct *delete_struct = calloc(1, sizeof(QUIT_struct));
 
 
-    delete_struct->OP_code = JOIN;
+    delete_struct->OP_code = QUIT;
     delete_struct->sock = sock;
 
-    PDU_struct->OP_code = QUIT;
+    PDU_struct->OP_code = USER;
     PDU_struct->data = delete_struct;
     return PDU_struct;
 
@@ -94,7 +94,7 @@ PDU_struct *read_JOIN(int sock){
     join_struct->OP_code = JOIN;
     join_struct->ID_len = name_len;
 
-    PDU_struct->OP_code = JOIN;
+    PDU_struct->OP_code = USER;
     PDU_struct->data = join_struct;
     header--;
     free(header);
@@ -326,6 +326,18 @@ data create_INSERT_buffer(data pdu){
     //printf("insert_struct->key %s\n", (char*)insert_struct->key);
 
     return head;
+}
+
+PDU_struct *create_QUIT_pdu() {
+    printf("QUIT\n");
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+    PDU_struct->OP_code = USER;
+    PDU_struct->data_bytes = HEADERSIZE;
+
+    data data = calloc(1,HEADERSIZE);
+    memset(data , QUIT, 1);
+    PDU_struct->data = data;
+    return PDU_struct;
 }
 
 

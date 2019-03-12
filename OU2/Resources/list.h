@@ -58,7 +58,7 @@ void llist_insertfirst(llist *l,data d);
 
 void llist_insertlast(llist *l,data d);
 
-data llist_removefirst(llist *l);
+int llist_removefirst(llist *l);
 
 data llist_removefirst_INT(llist *l);
 

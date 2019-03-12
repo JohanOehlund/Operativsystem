@@ -111,7 +111,7 @@ void llist_insertlast(llist *l, data d) {
 
 }
 
-data llist_removefirst(llist *l) {
+int llist_removefirst(llist *l) {
     pthread_mutex_lock(&l->mtx);
     llist_position p=llist_first(l);
 
@@ -131,13 +131,13 @@ data llist_removefirst(llist *l) {
         l->head->next = p->next;
         p->next->previous = NULL;
     }
-    void *temp = calloc(1, sizeof(char)*1024);
-    memcpy(temp, p->data, sizeof(char)*1024);
-    free(p->data);
+    int temp;
+    memcpy(&temp, p->data, sizeof(int));
+    //free(p->data);
     free(p);
 
     pthread_mutex_unlock(&l->mtx);
-    return (data)temp;
+    return temp;
 }
 
 data llist_removefirst_INT(llist *l) {

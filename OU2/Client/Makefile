@@ -31,8 +31,8 @@ $(TARGET): $(OBJS)
 runns:
 	./client HASSE ns itchy.cs.umu.se 7331
 
-runcs:
-	./client HASSE cs cyclops 6666
+run:
+	./client HASSE cs OIN 6666
 
 valgrind:
 	valgrind --leak-check=full --track-origins=yes ./client HASSE cs OIN 6666

@@ -3,7 +3,6 @@
 pthread_mutex_t lock;
 llist *clients_sockets;
 llist *sender_list;
-llist *client_ids;
 llist *availableThreads;
 llist *terminatedThreads;
 bool closeAllClients;
@@ -20,7 +19,6 @@ int main(int argc, char **argv){
 
     clients_sockets=llist_empty();
     sender_list=llist_empty();
-    client_ids=llist_empty();
     availableThreads = llist_empty();
     terminatedThreads = llist_empty();
     pthread_t trd[5];
@@ -30,9 +28,6 @@ int main(int argc, char **argv){
     setup_netlink_receive();
     init_hashtable();
 
-
-    closeAllClients = false;
-    exitServer=false;
     if (pthread_mutex_init(&lock, NULL) != 0){
         fprintf(stderr,"\n mutex init failed\n");
         return 1;
@@ -50,37 +45,47 @@ int main(int argc, char **argv){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-    if(pthread_create(&trd[2], NULL, accept_connections, (void*)argv)!=0){
+
+    if(pthread_create(&trd[2], NULL, kernel_communication, NULL)!=0){
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_create(&trd[3], NULL, accept_connections, (void*)argv)!=0){
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
 
-    if(pthread_create(&trd[3], NULL, kernel_communication, NULL)!=0){
-        perror("pthread_create");
-        exit(EXIT_FAILURE);
-    }
 
-    for (int i = 0; i < 4; ++i) {
-        printf("join trd %d\n", i);
+
+    for (int i = 0; i < 2; ++i) {
+        printf("join trd[%d]\n", i);
         if(pthread_join(trd[i],NULL) != 0) {
             perror("thread join");
             exit(EXIT_FAILURE);
         }
     }
-    /*if(pthread_cancel(trd[3])<0){
+    if(pthread_cancel(trd[2])<0){
         perror("pthread_cancel");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_cancel(trd[3])<0){
+        perror("pthread_cancel");
+        exit(EXIT_FAILURE);
+    }
+    if(pthread_join(trd[2],NULL) != 0) {
+        perror("thread join");
         exit(EXIT_FAILURE);
     }
     if(pthread_join(trd[3],NULL) != 0) {
         perror("thread join");
         exit(EXIT_FAILURE);
-    }*/
+    }
+
     if(pthread_mutex_destroy(&lock)!=0){
         perror("mutex destroy failed");
         return 1;
     }
     llist_free(clients_sockets);
-    llist_free(client_ids);
     llist_free(availableThreads);
     llist_free(terminatedThreads);
     llist_free(sender_list);
@@ -94,7 +99,7 @@ int main(int argc, char **argv){
 }
 
 data kernel_communication(data arg){
-    while(1){
+    while(!exitServer){
         reset_netlink_send();
         reset_netlink_receive();
         if(llist_isEmpty(sender_list)){
@@ -107,11 +112,8 @@ data kernel_communication(data arg){
        PDU_struct *pdu_send=llist_removefirst_PDU(sender_list);
 
        memcpy(NLMSG_DATA(nlh_user_send), pdu_send->data, pdu_send->data_bytes);
-       printf("Sending message to kernel\n");
        sendmsg(sock_fd_send,&msg_send,0);
-
        recvmsg(sock_fd_receive, &msg_receive, 0);
-       printf("Got message from kernel\n");
 
        PDU_struct *pdu_recieve = read_exactly_from_kernel(nlh_user_receive);
        store_data(pdu_send, pdu_recieve);
@@ -119,7 +121,6 @@ data kernel_communication(data arg){
        llist_position p=llist_first(clients_sockets);
        for (int i = 0; i < list_length(clients_sockets) ; ++i) {
            int temp_socket=*(int *)llist_inspect(p,clients_sockets);
-           printf("temp_socket %d\n", temp_socket);
            send_pdu(temp_socket, pdu_recieve);
            p=llist_next(p);
        }
@@ -196,10 +197,7 @@ void load_stored_values(){
                 token_num++;
             }
             insert_struct->OP_code = INSERT;
-            printf("OP_code: %u\n",insert_struct->OP_code);
-            printf("key: %s\n",insert_struct->key);
-            printf("data_bytes: %u\n",insert_struct->data_bytes);
-            printf("data: %s\n",(char*)insert_struct->data);
+
             void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
 
             PDU_struct->OP_code = USER;
@@ -207,10 +205,7 @@ void load_stored_values(){
             PDU_struct->data = action;
 
             memcpy(NLMSG_DATA(nlh_user_send), PDU_struct->data, PDU_struct->data_bytes);
-            printf("Sending message to kernel\n");
             sendmsg(sock_fd_send,&msg_send,0);
-
-            printf("Waiting for message from kernel\n");
             recvmsg(sock_fd_receive, &msg_receive, 0);
 
             free_struct(INSERT, insert_struct);
@@ -305,6 +300,13 @@ void store_data(PDU_struct *PDU_struct_SEND, PDU_struct *PDU_struct_RECEIVE) {
 }
 
 void close_server() {
+    PDU_struct *quit = create_QUIT_pdu();
+    while(!llist_isEmpty(clients_sockets)) {
+        int temp_socket= llist_removefirst(clients_sockets);
+        printf("temp_socket i close server %d\n", temp_socket);
+        send_pdu(temp_socket, quit);
+    }
+    free_struct(USER, quit);
     closeAllClients = true;
     while(list_length(availableThreads)<THREADS){
         pthread_mutex_lock(&availableThreads->mtx);
@@ -380,44 +382,6 @@ void *server_writer(void *arg) {
 
 
 
-/* Sends all PDU:s to all connected clients.
- * @param   arg -
- * @return
- * @comment Thread terminates by setting varible "exitServer" to true.
- */
-void *send_to_clients(void *arg){
-    /*
-    while(!exitServer){
-        printf("WAITING FOR MESSAGES TO SEND!\n");
-        if(llist_isEmpty(clients_sockets)){
-            llist_position p3=llist_first(client_ids);
-            for (int j = 0; j < list_length(client_ids) ; ++j) {
-                llist_remove(client_ids, p3);
-                p3 = llist_next(p3);
-            }
-        }
-        if(llist_isEmpty(sender_list)){
-            pthread_mutex_lock(&sender_list->mtx);
-            pthread_cond_wait(&sender_list->cond, &sender_list->mtx);
-            pthread_mutex_unlock(&sender_list->mtx);
-            if(exitServer)
-                return NULL;
-        }
-        pthread_mutex_lock(&lock);
-        PDU_struct *pdu=llist_removefirst_PDU(sender_list);
-        llist_position p=llist_first(clients_sockets);
-        for (int i = 0; i < list_length(clients_sockets) ; ++i) {
-            int sock=*(int *)llist_inspect(p,clients_sockets);
-            send_pdu(sock,pdu);
-            p=llist_next(p);
-        }
-        pthread_mutex_unlock(&lock);
-        free(pdu->data);
-        free(pdu);
-    }*/
-    return NULL;
-}
-
 /* Create a struct that contains information to connecting client
  * @param   argv -  input argument to program.
  * @return  sock - The created socket.
@@ -440,6 +404,7 @@ int setup_listening_socket(char **argv) {
  * @comment Closing connection if new client tries to connect when server is full.
  */
 void *accept_connections(void *arg) {
+
     char **argv = arg;
 
 
@@ -468,6 +433,7 @@ void *accept_connections(void *arg) {
             free(client_sock);
             continue;
         }
+
         if(!closeAllClients) {
             clientThreadInfo *cti = calloc(1, sizeof(clientThreadInfo));
             cti->client_sock = *client_sock;
@@ -546,32 +512,16 @@ void *client_listener(void *arg){
         PDU_struct_SEND = receive_pdu(temp_socket);
         if((int *)PDU_struct_SEND==(int*)-100){
             llist_insertfirst(terminatedThreads, &cti->thread_num);
+            pthread_cond_broadcast(&terminatedThreads->cond);
             close_connected_client(temp_socket, 1);
             return NULL;
         }
 
         llist_insertlast(sender_list, PDU_struct_SEND);
         pthread_cond_broadcast(&sender_list->cond);
-        /*memcpy(NLMSG_DATA(nlh_user_send), PDU_struct_SEND->data, PDU_struct_SEND->data_bytes);
-        printf("Sending message to kernel\n");
-        sendmsg(sock_fd_send,&msg_send,0);
-
-        printf("Waiting for message from kernel\n");
-        recvmsg(sock_fd_receive, &msg_receive, 0);
-
-        PDU_struct_RECEIVE = read_exactly_from_kernel(nlh_user_receive);
-        //printf("Received message opcode: %u\n", PDU_struct_RECEIVE->OP_code);
-        //printf("Received message data_bytes: %u\n", PDU_struct_RECEIVE->data_bytes);
-        send_pdu(temp_socket, PDU_struct_RECEIVE);
-        store_data(PDU_struct_SEND, PDU_struct_RECEIVE);
-
-        free_struct(KERNEL, PDU_struct_RECEIVE);
-        free_struct(KERNEL, PDU_struct_SEND);*/
-        //usleep(2000);
-
     }
     close_connected_client(temp_socket, 0);
-    //llist_insertfirst(terminatedThreads, &cti->thread_num);
+    llist_insertfirst(terminatedThreads, &cti->thread_num);
     return NULL;
 }
 
@@ -586,27 +536,18 @@ void close_connected_client(int client_sock, int cliC) {
     //JOIN_struct *join_struct=gen_struct->created_struct;
     int socket = 0;
     char *temp_client = NULL;
-    /*if(cliC == 0)
-        sendQUIT(client_sock);*/
+    //if(cliC == 0)
+        //sendQUIT(client_sock);
 
     pthread_mutex_lock(&lock);
     llist_position p = llist_first(clients_sockets);
-    /*for (int i = 0; i < list_length(clients_sockets); ++i) {
+    for (int i = 0; i < list_length(clients_sockets); ++i) {
         socket = *(int*)llist_inspect(p, clients_sockets);
         if(client_sock == socket) {
             llist_remove(clients_sockets, p);
             break;
         }
         p = llist_next(p);
-    }*/
-    llist_position p2 = llist_first(client_ids);
-    for (int j = 0; j < list_length(client_ids) ; ++j) {
-        temp_client = llist_inspect(p2, client_ids);
-        /*if(strncmp(temp_client, join_struct->client_ID, join_struct->ID_len) == 0) {
-            llist_remove(client_ids, p2);
-            break;
-        }*/
-        p2 = llist_next(p2);
     }
     //addPLEAVEToList(join_struct);
     if(cliC == 0) {
@@ -617,6 +558,8 @@ void close_connected_client(int client_sock, int cliC) {
     //free_struct(gen_struct);
 
 }
+
+
 
 
 
@@ -650,7 +593,6 @@ void print_wrong_params(char *progName) {
 
 int setup_netlink_send(){
     sock_fd_send=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER_SEND);
-    printf("sock_fd_send: %d\n", sock_fd_send);
     if(sock_fd_send<0){
         perror("Error creating socket: ");
         return -1;
@@ -689,7 +631,6 @@ int setup_netlink_send(){
 
 int setup_netlink_receive(){
     sock_fd_receive=socket(PF_NETLINK, SOCK_RAW, NETLINK_USER_RECEIVE);
-    printf("sock_fd_receive: %d\n", sock_fd_receive);
     if(sock_fd_receive<0){
         perror("Error creating socket: ");
         return -1;

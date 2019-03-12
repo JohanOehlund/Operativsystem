@@ -5,6 +5,7 @@ char *gets(char *str);
 #include "client.h"
 pthread_mutex_t lock;
 char* connectedServer;
+bool close_client = false;
 
 int main(int argc, char **argv){
 
@@ -31,6 +32,10 @@ int main(int argc, char **argv){
     }
 
     client_send(client_server);
+    if(pthread_cancel(trd[0])<0){
+        perror("pthread_cancel");
+        exit(EXIT_FAILURE);
+    }
 
     if(pthread_join(trd[0],NULL) != 0) {
         perror("thread join");
@@ -49,18 +54,25 @@ data client_send(int sock){
     char data[MAXMESSLEN+1];
     PDU_struct *PDU_struct_send = NULL;
     do {
+        if(close_client){
+            break;
+        }
         memset(data,'\0',MAXMESSLEN+1);
         memset(key,'\0',MAXMESSLEN+1);
         index = 0;
 
         print_options();
-        scanf("%d%c", &choice,&newline);
+        char message[MAXMESSLEN+1];
+        fgets(message,MAXMESSLEN,stdin);
+        if(strncmp(message, "\n", MAXMESSLEN)==0)
+            continue;
+        //if()
         fflush(stdout);
-        switch (choice) {
-            case 1:
+        switch (message[0]) {
+            case '1':
                 PDU_struct_send = create_INIT_to_server();
                 break;
-            case 2:
+            case '2':
                 printf("\nEnter key: ");
                 temp_char = getchar();
                 key[0] = temp_char;
@@ -83,7 +95,7 @@ data client_send(int sock){
                 }
                 PDU_struct_send = create_INSERT_to_server(key, data, strlen(data)+1);
                 break;
-            case 3:
+            case '3':
                 printf("\nEnter key: ");
                 temp_char = getchar();
                 key[0] = temp_char;
@@ -96,7 +108,7 @@ data client_send(int sock){
                 }
                 PDU_struct_send = create_GET_to_server(key);
                 break;
-            case 4:
+            case '4':
                 printf("\nEnter key: ");
                 temp_char = getchar();
                 key[0] = temp_char;
@@ -109,14 +121,14 @@ data client_send(int sock){
                 }
                 PDU_struct_send = create_DELETE_to_server(key);
                 break;
-            case 5:
+            case '5':
                 printf("Closing program\n");
-                PDU_struct_send = create_QUIT_to_server();
+                PDU_struct_send = create_QUIT_pdu();
                 send_pdu(sock, PDU_struct_send);
                 free_struct(USER,PDU_struct_send);
                 return 0;
                 break;
-            case 6:
+            case '6':
                 TEST_INT_INSERT(sock);
                 continue;
             default:
@@ -124,12 +136,16 @@ data client_send(int sock){
                 continue;
 
         }
+
+
+
         send_pdu(sock, PDU_struct_send);
         free_struct(USER,PDU_struct_send);
         //free_struct(KERNEL,PDU_struct_recieve);
     }while (choice != 5);
     shutdown(sock,SHUT_RDWR);
     close(sock);
+    close_client = true;
 }
 
 void print_options(){
@@ -145,9 +161,18 @@ void print_options(){
 
 data client_listen(data arg) {
     int client_server = *(int*)arg;
-    while(1){
+    uint8_t OP_code;
+    while(!close_client){
         PDU_struct *PDU_struct_recieve = NULL;
         PDU_struct_recieve = receive_pdu(client_server);
+        memcpy(&OP_code, PDU_struct_recieve->data, 1);
+        if(OP_code == QUIT) {
+            close_client = true;
+            printf("Server has kicked you, press enter to quit.\n");
+            free_struct(USER,PDU_struct_recieve);
+            close_client = true;
+            break;
+        }
         //printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
         //printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
         printf("\n\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
@@ -211,18 +236,6 @@ void TEST_INT_INSERT(int sock){
         free_struct(KERNEL,PDU_struct_recieve2);
     }
 
-}
-
-PDU_struct *create_QUIT_to_server() {
-    printf("QUIT\n");
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
-    PDU_struct->OP_code = USER;
-    PDU_struct->data_bytes = HEADERSIZE;
-
-    data data = calloc(1,HEADERSIZE);
-    memset(data , QUIT, 1);
-    PDU_struct->data = data;
-    return PDU_struct;
 }
 
 PDU_struct *create_INIT_to_server(){
