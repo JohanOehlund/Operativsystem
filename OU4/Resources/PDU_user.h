@@ -4,6 +4,7 @@
 
 #ifndef OU2_PDU_H
 #define OU2_PDU_H
+
 typedef void* data;
 
 #include <sys/socket.h>
@@ -37,6 +38,13 @@ typedef void* data;
 #define HEADERSIZE 4
 #define KEY_SIZE 64
 #define MAXMESSLEN 50
+
+
+//For testing
+struct timespec time_start, time_end;
+int num_send;
+int num_receive;
+double test_time;
 
 //Kernel space struct.
 /*typedef struct PDU_kernel_struct {
@@ -116,6 +124,10 @@ PDU_struct *read_INSERT(int sock);
 PDU_struct *read_KERNEL(int sock);
 
 void free_struct(uint8_t OP_code, data free_struct);
+
+double sec_since(struct timespec *start, struct timespec *end);
+
+void print_test_time();
 
 
 

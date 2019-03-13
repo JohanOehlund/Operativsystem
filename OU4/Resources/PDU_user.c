@@ -378,3 +378,21 @@ void free_struct(uint8_t OP_code, data free_struct){
     }
 
 }
+
+void print_test_time(){
+    test_time = sec_since(&time_start, &time_end);
+    printf("\n-------------------------\n");
+    printf("Test took %lf s", test_time);
+    printf("\n-------------------------\n");
+}
+
+
+double sec_since(struct timespec *start, struct timespec *end) {
+    double s, e;
+
+    s = start->tv_sec * 1000000000.0 + start->tv_nsec;
+    e =   end->tv_sec * 1000000000.0 +   end->tv_nsec;
+
+
+    return (e - s)/1000000000.0;
+}

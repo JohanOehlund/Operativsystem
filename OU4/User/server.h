@@ -31,6 +31,8 @@ typedef struct clientThreadInfo {
 
 }clientThreadInfo;
 
+void test_function();
+
 void init_hashtable();
 
 data accept_connections(void *arg);

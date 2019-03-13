@@ -7,8 +7,13 @@ pthread_mutex_t lock;
 char* connectedServer;
 bool close_client = false;
 
-int main(int argc, char **argv){
 
+
+
+int main(int argc, char **argv){
+    test_time = 0;
+    num_send = 0;
+    num_receive = 0;
     if (argc != 5) {
         printWrongParams(argv[0]);
         return EXIT_FAILURE;
@@ -131,6 +136,12 @@ data client_send(int sock){
             case '6':
                 TEST_INT_INSERT(sock);
                 continue;
+            case '7':
+                end_2_end_test_1(sock);
+                continue;
+            case '8':
+                end_2_end_test_2(sock);
+                continue;
             default:
                 fprintf(stdout, "BAD INPUT!\n");
                 continue;
@@ -155,6 +166,8 @@ void print_options(){
     printf("4. Delete from hashtable\n");
     printf("5. Exit program\n");
     printf("6. TEST_INT_INSERT()\n");
+    printf("7. end_2_end_test()_1\n");
+    printf("8. end_2_end_test()_2\n");
     printf("\nGive your choice (1 - 6): ");
     fflush(stdout);
 }
@@ -162,6 +175,7 @@ void print_options(){
 data client_listen(data arg) {
     int client_server = *(int*)arg;
     uint8_t OP_code;
+    num_receive = 0;
     while(!close_client){
         PDU_struct *PDU_struct_recieve = NULL;
         PDU_struct_recieve = receive_pdu(client_server);
@@ -173,15 +187,85 @@ data client_listen(data arg) {
             close_client = true;
             break;
         }
-        //printf("OP i return: %u\n", PDU_struct_recieve->OP_code);
-        //printf("data_bytes i return: %u\n", PDU_struct_recieve->data_bytes);
-        printf("\n\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
+
+        //printf("\n\nDATA FROM KERNEL: %s\n", (char*)PDU_struct_recieve->data);
         free_struct(USER,PDU_struct_recieve);
-        print_options();
+        //print_options();
+        num_receive++;
+        if(num_send == num_receive){
+            clock_gettime(CLOCK_REALTIME, &time_end);
+            print_test_time();
+        }
     }
     shutdown(client_server,SHUT_RDWR);
     close(client_server);
     return NULL;
+}
+
+
+
+void end_2_end_test_1(int sock){
+
+    num_send = 0;
+    num_receive = 0;
+    //char buffer[4];
+    int i;
+    clock_gettime(CLOCK_REALTIME, &time_start);
+    for(i = 0; i < 10000; i++){
+        //usleep(100);
+        char key[10];
+        char data[10];
+        //printf("I: %d\n", i);
+        //sprintf(buffer, "%d", test);
+        sprintf(key,"%d",i);
+        sprintf(data,"%d",i);
+
+        PDU_struct *PDU_struct_send = NULL;
+
+        //memcpy(data,&data,size);
+        PDU_struct_send = create_INSERT_to_server(key, data, strlen(data)+1);
+
+        send_pdu(sock, PDU_struct_send);
+
+        //PDU_struct_recieve = receive_pdu(sock);
+
+
+        //free(data);
+        free_struct(USER,PDU_struct_send);
+        num_send++;
+    }
+
+}
+
+void end_2_end_test_2(int sock){
+
+    //char buffer[4];
+    int i;
+    clock_gettime(CLOCK_REALTIME, &time_start);
+    for(i = 10000; i < 20000; i++){
+        usleep(100);
+        char key[10];
+        char data[10];
+        //printf("I: %d\n", i);
+        //sprintf(buffer, "%d", test);
+        sprintf(key,"%d",i);
+        sprintf(data,"%d",i);
+
+        PDU_struct *PDU_struct_send = NULL;
+
+        //memcpy(data,&data,size);
+        PDU_struct_send = create_INSERT_to_server(key, data, strlen(data)+1);
+
+        send_pdu(sock, PDU_struct_send);
+
+        //PDU_struct_recieve = receive_pdu(sock);
+
+
+        //free(data);
+        free_struct(USER,PDU_struct_send);
+        num_send++;
+    }
+
 }
 
 
@@ -254,9 +338,9 @@ PDU_struct *create_INIT_to_server(){
     return PDU_struct;
 }
 
-PDU_struct *create_INSERT_to_server(char* key, data data, uint16_t data_bytes){
+PDU_struct *create_INSERT_to_server(char* key, data data1, uint16_t data_bytes){
 
-    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(data));
+    PDU_struct *PDU_struct = calloc(1,sizeof(PDU_struct)+sizeof(void*));
 
     INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
     insert_struct->OP_code=INSERT;
@@ -264,10 +348,9 @@ PDU_struct *create_INSERT_to_server(char* key, data data, uint16_t data_bytes){
     memcpy(insert_struct->key, key, KEY_SIZE);
     insert_struct->data_bytes = data_bytes;
     insert_struct->data = calloc(1,data_bytes);
+    memcpy(insert_struct->data, data1, (insert_struct->data_bytes));
 
-    memcpy(insert_struct->data, data, (insert_struct->data_bytes));
-
-    void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
+    data action = PDU_to_buffer_user(INSERT, insert_struct);
 
     PDU_struct->OP_code = USER;
     PDU_struct->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;

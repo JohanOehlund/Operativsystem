@@ -33,5 +33,10 @@ data client_send(int sock);
 
 void TEST_INT_INSERT(int sock);
 
+void end_2_end_test_1(int sock);
+void end_2_end_test_2(int sock);
+
+
+
 
 #endif //DODOU2_CLIENT_H

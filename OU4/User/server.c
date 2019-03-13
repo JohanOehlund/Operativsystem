@@ -97,28 +97,40 @@ int main(int argc, char **argv){
 
 data kernel_communication(data arg){
     while(!exitServer){
-        reset_netlink_send();
-        reset_netlink_receive();
+        //usleep(2000);
         if(llist_isEmpty(sender_list)){
            pthread_mutex_lock(&sender_list->mtx);
            pthread_cond_wait(&sender_list->cond, &sender_list->mtx);
            pthread_mutex_unlock(&sender_list->mtx);
-           if(exitServer)
+           if(exitServer){
+               printf("EXIT kernel_communication!\n");
                return NULL;
+           }
+
        }
-       pthread_mutex_lock(&lock);
+
+       usleep(25); // Magisk sleep som räddar oss från U!
+
+
        PDU_struct *pdu_send=llist_removefirst_PDU(sender_list);
+       //uint8_t OP_code;
+       //memcpy(&OP_code, pdu_send->data,1);
+       //printf("OP_code to kernel: %u\n", OP_code);
+
+       //reset_netlink_send();
+       //reset_netlink_receive();
 
        memcpy(NLMSG_DATA(nlh_user_send), pdu_send->data, pdu_send->data_bytes);
        sendmsg(sock_fd_send,&msg_send,0);
-       while(recvmsg(sock_fd_receive, &msg_receive, MSG_DONTWAIT) <= 0) {
-           usleep(2000);
+       recvmsg(sock_fd_receive, &msg_receive, 0);
+       /*while(recvmsg(sock_fd_receive, &msg_receive, MSG_DONTWAIT) <= 0) {
+           usleep(1000);
            if(exitServer) {
                free_struct(USER, pdu_send);
-               pthread_mutex_unlock(&lock);
+               //pthread_mutex_unlock(&lock);
                return NULL;
            }
-       }
+       }*/
 
 
        PDU_struct *pdu_recieve = read_exactly_from_kernel(nlh_user_receive);
@@ -133,7 +145,7 @@ data kernel_communication(data arg){
 
        free_struct(USER, pdu_send);
        free_struct(KERNEL, pdu_recieve);
-       pthread_mutex_unlock(&lock);
+       //pthread_mutex_unlock(&lock);
 
     }
 
@@ -146,8 +158,10 @@ void init_hashtable() {
     PDU_struct_INIT->data_bytes = HEADERSIZE;
     PDU_struct_INIT->data = calloc(1, HEADERSIZE);
     memset(PDU_struct_INIT->data, INIT, 1);
-    reset_netlink_send();
-    reset_netlink_receive();
+
+    //reset_netlink_send();
+    //reset_netlink_receive();
+
     memcpy(NLMSG_DATA(nlh_user_send), PDU_struct_INIT->data, PDU_struct_INIT->data_bytes);
     printf("Sending init to kernel\n");
     sendmsg(sock_fd_send,&msg_send,0);
@@ -208,14 +222,14 @@ void load_stored_values(){
             }
             insert_struct->OP_code = INSERT;
 
-            void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
+            data action = PDU_to_buffer_user(INSERT, insert_struct);
 
             PDU_struct->OP_code = USER;
             PDU_struct->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
             PDU_struct->data = action;
 
-            reset_netlink_send();
-            reset_netlink_receive();
+            //reset_netlink_send();
+            //reset_netlink_receive();
 
             memcpy(NLMSG_DATA(nlh_user_send), PDU_struct->data, PDU_struct->data_bytes);
             sendmsg(sock_fd_send,&msg_send,0);
@@ -399,11 +413,61 @@ void *server_writer(void *arg) {
             printf("Closing server.\n");
             close_server();
             return NULL;
+        }else if(strncmp(message,"test",4) == 0){
+            test_function();
         }
 
         fflush(stdin);
     }
     return NULL;
+}
+
+void test_function(){
+    int i;
+    clock_gettime(CLOCK_REALTIME, &time_start);
+    for(i = 0; i < 100000; i++){
+        //PDU_struct *pdu_send = NULL;
+        //PDU_struct *pdu_recieve = NULL;
+        //printf("SENDING TEST\n");
+        //usleep(100);
+        char key[64];
+        char data[64];
+        //printf("I: %d\n", i);
+        //sprintf(buffer, "%d", test);
+        sprintf(key, "MMMMMMMMMMM MMMMMMMMMMMMMMMMMMMMM%d",i);
+        sprintf(data,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
+        PDU_struct *pdu_send = calloc(1,sizeof(PDU_struct)+sizeof(data));
+
+        INSERT_struct *insert_struct = calloc(1,sizeof(INSERT_struct));
+        insert_struct->OP_code=INSERT;
+        memset(insert_struct->key,'\0', KEY_SIZE);
+        memcpy(insert_struct->key, key, strlen(key));
+        insert_struct->data_bytes = strlen(data)+1;
+        insert_struct->data = calloc(1,strlen(data)+1);
+        memcpy(insert_struct->data, data, insert_struct->data_bytes);
+
+
+
+        void *action = PDU_to_buffer_user(INSERT, insert_struct); // 'action' kan inte vara data måste vara void*....
+
+        pdu_send->OP_code = USER;
+        pdu_send->data_bytes = (insert_struct->data_bytes) + HEADERSIZE + KEY_SIZE;
+        pdu_send->data = action;
+
+        memcpy(NLMSG_DATA(nlh_user_send), pdu_send->data, pdu_send->data_bytes);
+        sendmsg(sock_fd_send,&msg_send,0);
+        recvmsg(sock_fd_receive, &msg_receive, 0);
+
+        PDU_struct *pdu_recieve = read_exactly_from_kernel(nlh_user_receive);
+
+        store_data(pdu_send, pdu_recieve);
+        free_struct(USER, pdu_send);
+        free_struct(KERNEL, pdu_recieve);
+        free_struct(INSERT, insert_struct);
+    }
+    clock_gettime(CLOCK_REALTIME, &time_end);
+    print_test_time();
 }
 
 
@@ -447,7 +511,7 @@ void *accept_connections(void *arg) {
     }
     while(1){
         temp2 = accept(sock,0, 0);
-        pthread_mutex_lock(&lock);
+        //pthread_mutex_lock(&lock);
         int *client_sock = calloc(1, sizeof(int *));
         memcpy(client_sock, &temp2, sizeof(int));
 
@@ -480,7 +544,7 @@ void *accept_connections(void *arg) {
 
         free(thread_number);
         free(client_sock);
-        pthread_mutex_unlock(&lock);
+        //pthread_mutex_unlock(&lock);
     }
 
     return NULL;
@@ -519,13 +583,14 @@ void *client_listener(void *arg){
     printf("Received JOIN from user: %s with socket number: %d\n", join_struct->client_ID, temp_socket);
     free_struct(JOIN, pdu_JOIN);
 
-
+    int i = 0;
     while(1) {
         PDU_struct *PDU_struct_SEND = NULL;
         PDU_struct *PDU_struct_RECEIVE = NULL;
 
         PDU_struct_SEND = receive_pdu(temp_socket);
         if((int *)PDU_struct_SEND==(int*)-100){
+
             llist_insertfirst(terminatedThreads, &cti->thread_num);
             pthread_cond_broadcast(&terminatedThreads->cond);
             close_connected_client(temp_socket, 1);
@@ -538,7 +603,7 @@ void *client_listener(void *arg){
             free_struct(JOIN, PDU_struct_SEND);
         }else {
             llist_insertlast(sender_list, PDU_struct_SEND);
-            pthread_cond_broadcast(&sender_list->cond);
+            //printf("i i client list: %d\n", ++i);
         }
 
 
@@ -693,10 +758,10 @@ int setup_netlink_receive(){
 void reset_netlink_send(){
 
     //nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh_user_send, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh_user_send->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh_user_send->nlmsg_pid = getpid();
-    nlh_user_send->nlmsg_flags = 0;
+    //memset(nlh_user_send, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    //nlh_user_send->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    //nlh_user_send->nlmsg_pid = getpid();
+    //nlh_user_send->nlmsg_flags = 0;
 
     //printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
 }
@@ -705,10 +770,10 @@ void reset_netlink_send(){
 void reset_netlink_receive(){
 
     //nlh_user = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-    memset(nlh_user_receive, 0, NLMSG_SPACE(MAX_PAYLOAD));
-    nlh_user_receive->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-    nlh_user_receive->nlmsg_pid = getpid();
-    nlh_user_receive->nlmsg_flags = 0;
+    //memset(nlh_user_receive, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    //nlh_user_receive->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    //nlh_user_receive->nlmsg_pid = getpid();
+    //nlh_user_receive->nlmsg_flags = 0;
 
     //printf("NLMSG_SPACE(MAX_PAYLOAD): %d\n", NLMSG_SPACE(MAX_PAYLOAD));
 }

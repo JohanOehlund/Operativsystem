@@ -3,7 +3,7 @@
 //https://github.com/intel/linux-intel-4.9/blob/master/lib/test_rhashtable.c
 
 static void recieve_data(struct sk_buff *skb) {
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
 
     /*struct sk_buff *copy = skb_unshare(skb, GFP_KERNEL);
     if(copy == NULL){
@@ -18,7 +18,7 @@ static void recieve_data(struct sk_buff *skb) {
 }
 
 static void work_handler(struct work_struct *work){
-    printk("Entering: %s\n",__FUNCTION__);
+    //printk("Entering: %s\n",__FUNCTION__);
     struct work_data * my_data;
     my_data = container_of(work, struct work_data,  my_work);
 
@@ -63,7 +63,7 @@ static void work_handler(struct work_struct *work){
 * @return   pdu - The pdu.
 */
 static PDU_struct *read_exactly_from_user(data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     PDU_struct *response  = kmalloc(sizeof(PDU_struct), GFP_KERNEL);
     if (!response){
         printk(KERN_ALERT "Memory allocation failed.\n");
@@ -71,7 +71,7 @@ static PDU_struct *read_exactly_from_user(data request){
     }
     uint8_t OP_code;
     memcpy(&OP_code,request,1);
-    printk(KERN_ALERT "OP_code %u\n", OP_code);
+    //printk(KERN_ALERT "OP_code %u\n", OP_code);
     switch (OP_code){
         case INIT:
             read_INIT_struct(response, request);
@@ -87,18 +87,20 @@ static PDU_struct *read_exactly_from_user(data request){
             break;
 
         default:
-            printk(KERN_ALERT "Error creating PDU.\n");
-            return NULL;
+            printk(KERN_ERR "Error wrong OP_code to kernel %u\n", OP_code);
+            response->OP_code = KERNEL;
+            response->data = "Error wrong OP_code to kernel";
+            response->data_bytes = strnlen(response->data, MAX_PAYLOAD)+1;
     }
     return response;
 }
 
 
 static data PDU_to_buffer_kernel(PDU_struct *pdu){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    /*printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     printk(KERN_INFO "opcode kernel: %u\n", pdu->OP_code);
     printk(KERN_INFO "data_bytes kernel: %u\n", pdu->data_bytes);
-    printk(KERN_INFO "data kernel: %s\n", (char*)pdu->data);
+    printk(KERN_INFO "data kernel: %s\n", (char*)pdu->data);*/
     data response_buffer = kmalloc(((pdu->data_bytes)+HEADERSIZE), GFP_KERNEL);
     data head = response_buffer;
     memcpy(response_buffer, &pdu->OP_code, 1);
@@ -110,16 +112,13 @@ static data PDU_to_buffer_kernel(PDU_struct *pdu){
 }
 
 static void read_DELETE_struct(PDU_struct *response, data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     size_t arr_size = KEY_SIZE+1;
     char key[arr_size];
     request+=HEADERSIZE;
     memset(key,'\0',arr_size);
     memcpy(key, request, strlen((char*)request));
     key[KEY_SIZE] = '\0';
-
-    printk(KERN_INFO "GET key: %s\n", key);
-    //struct rhash_object *obj_get;
     struct rhash_object *obj;
     obj = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj == NULL){
@@ -148,7 +147,7 @@ static void read_DELETE_struct(PDU_struct *response, data request){
 }
 
 static void read_GET_struct(PDU_struct *response, data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     size_t arr_size = KEY_SIZE+1;
     char key[arr_size];
     request+=HEADERSIZE;
@@ -156,10 +155,6 @@ static void read_GET_struct(PDU_struct *response, data request){
     memcpy(key, request, strlen((char*)request));
     key[KEY_SIZE] = '\0';
 
-    printk(KERN_INFO "GET key: %s\n", key);
-    printk(KERN_INFO "Size of key2: %zu\n", sizeof(key));
-    printk(KERN_INFO "strlen((char*)request: %zu\n", strlen((char*)request));
-    //struct rhash_object *obj_get;
     struct rhash_object *obj_get = NULL;
     obj_get = rhashtable_lookup_fast(&ht, &key, test_rht_params);
     if(obj_get == NULL){
@@ -185,9 +180,6 @@ static void read_GET_struct(PDU_struct *response, data request){
 }
 
 static void read_INSERT_struct(PDU_struct *response, data request){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
-
-
 
     struct rhash_object *obj = kmalloc(sizeof(struct rhash_object),GFP_KERNEL);
     if (!obj) {
@@ -201,15 +193,12 @@ static void read_INSERT_struct(PDU_struct *response, data request){
 
     request++;
     memcpy(&obj->data_bytes, request, 2);
-    printk(KERN_INFO "obj->data_bytes: %u\n", obj->data_bytes);
     request+=3;
     size_t arr_size = KEY_SIZE+1;
     memset(obj->key,'\0',arr_size);
     memcpy(obj->key, request, strlen((char*)request));
     obj->key[KEY_SIZE] = '\0';
 
-    //obj->key = 1337;
-    printk(KERN_INFO "obj->key: %s\n", obj->key);
     request+=KEY_SIZE;
     obj->data = kmalloc(obj->data_bytes,GFP_KERNEL);
     memcpy(obj->data, request, (obj->data_bytes));
@@ -237,7 +226,6 @@ static void read_INSERT_struct(PDU_struct *response, data request){
 }
 
 static void read_INIT_struct(PDU_struct *response, data data){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     if(hashtable_initialized == 1) {
         printk(KERN_ALERT "Hashtable already initialized.\n");
         response->OP_code = KERNEL;
@@ -262,7 +250,7 @@ static void read_INIT_struct(PDU_struct *response, data data){
 
 }
 int my_compare_function(struct rhashtable_compare_arg *arg, const void *obj){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhashtable *ht = arg->ht;
 	const char *ptr = obj;
 
@@ -278,7 +266,7 @@ static int __init init(void) {
     /* This is for 3.6 kernels and above.*/
 
     struct netlink_kernel_cfg cfg_send = {
-        .input = recieve_data,
+        .input = NULL,
     };
 
     struct netlink_kernel_cfg cfg_receive = {
@@ -313,7 +301,7 @@ static int __init init(void) {
 }
 
 static void free_ht_objects(data ptr, data arg){
-    printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
+    //printk(KERN_INFO "Entering: %s\n", __FUNCTION__);
     struct rhash_object *data = (struct rhash_object*) ptr;
     kfree(data->data);
     kfree(data);
