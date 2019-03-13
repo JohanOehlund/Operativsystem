@@ -109,7 +109,7 @@ data kernel_communication(data arg){
 
        }
 
-       usleep(25); // Magisk sleep som räddar oss från U!
+       //usleep(25); // Magisk sleep som räddar oss från U!
 
 
        PDU_struct *pdu_send=llist_removefirst_PDU(sender_list);
@@ -425,7 +425,7 @@ void *server_writer(void *arg) {
 void test_function(){
     int i;
     clock_gettime(CLOCK_REALTIME, &time_start);
-    for(i = 0; i < 100000; i++){
+    for(i = 0; i < 500000; i++){
         //PDU_struct *pdu_send = NULL;
         //PDU_struct *pdu_recieve = NULL;
         //printf("SENDING TEST\n");

@@ -211,7 +211,7 @@ void end_2_end_test_1(int sock){
     //char buffer[4];
     int i;
     clock_gettime(CLOCK_REALTIME, &time_start);
-    for(i = 0; i < 10000; i++){
+    for(i = 0; i < 1000000; i++){
         //usleep(100);
         char key[10];
         char data[10];
